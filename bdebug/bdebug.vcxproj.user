@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LocalDebuggerCommandArguments>--elffile cm4 $(SolutionDir)capps/dcore/cm4/build/CY8CKIT-062S2-43012/Debug/appcm4.elf --elffile cm0p $(SolutionDir)capps/dcore/cm0p/build/CY8CKIT-062S2-43012/Debug/appcm0p.elf --openocd C:\Users\ButchGriffin\ModusToolbox\tools_2.1\openocd\bin\openocd.exe --config kitprog3-psoc6 --debug</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LocalDebuggerCommandArguments>--elffile cm4 $(SolutionDir)capps/dcore/cm4/build/CY8CKIT-062S2-43012/Debug/appcm4.elf --elffile cm0p $(SolutionDir)capps/dcore/cm0p/build/CY8CKIT-062S2-43012/Debug/appcm0p.elf --openocd C:\Users\ButchGriffin\ModusToolbox\tools_2.1\openocd\bin\openocd.exe --config kitprog3-psoc6 --debug</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LocalDebuggerCommandArguments>--elffile cm4 $(SolutionDir)capps/dcore/cm4/build/CY8CKIT-062S2-43012/Debug/appcm4.elf --elffile cm0p $(SolutionDir)capps/dcore/cm0p/build/CY8CKIT-062S2-43012/Debug/appcm0p.elf --openocd C:\Users\ButchGriffin\ModusToolbox\tools_2.1\openocd\bin\openocd.exe --config kitprog3-psoc6 --debug</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LocalDebuggerCommandArguments>--elffile cm4 $(SolutionDir)capps/dcore/cm4/build/CY8CKIT-062S2-43012/Debug/appcm4.elf --elffile cm0p $(SolutionDir)capps/dcore/cm0p/build/CY8CKIT-062S2-43012/Debug/appcm0p.elf --openocd C:\Users\ButchGriffin\ModusToolbox\tools_2.1\openocd\bin\openocd.exe --config kitprog3-psoc6 --debug</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,5 @@
+﻿  Building Custom Rule C:/cygwin64/home/ButchGriffin/mtools/bdebug/process-x64/CMakeLists.txt
+  process.cpp
+  process_win.cpp
+  Generating Code...
+  tiny-process-library.vcxproj -> C:\cygwin64\home\ButchGriffin\mtools\bdebug\process-x64\Debug\tiny-process-library.lib

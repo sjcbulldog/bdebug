@@ -1,0 +1,7 @@
+x64
+Win32
+.vs
+capps/*/*/libs
+capps/*/*/build
+capps/*/libs
+capps/*/build
