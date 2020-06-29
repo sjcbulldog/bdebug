@@ -22,6 +22,138 @@ namespace bwg
         {
         }
 
+        bool GDBServerBackend::startProgram(const std::filesystem::path& config_file, nlohmann::json& obj)
+        {
+
+            if (!obj.contains(JsonNameStartupDelay))
+            {
+                Message msg(Message::Type::Error, ModuleName);
+                msg << "config file '" << config_file << "' is missing the '" << JsonNameStartupDelay << "' field";
+                logger() << msg;
+                return false;
+            }
+
+            if (!obj[JsonNameStartupDelay].is_number_integer())
+            {
+                Message msg(Message::Type::Error, ModuleName);
+                msg << "config file '" << config_file << "' has the '" << JsonNameStartupDelay << "' field, but it is not an integer";
+                logger() << msg;
+                return false;
+            }
+
+            if (!obj.contains(JsonNameArgs))
+            {
+                Message msg(Message::Type::Error, ModuleName);
+                msg << "config file '" << config_file << "' is missing the '" << JsonNameArgs << "' field";
+                logger() << msg;
+                return false;
+            }
+
+            if (!obj[JsonNameArgs].is_array())
+            {
+                Message msg(Message::Type::Error, ModuleName);
+                msg << "config file '" << config_file << "' has the '" << JsonNameArgs << "' field, but it is not a string";
+                logger() << msg;
+                return false;
+            }
+
+            std::vector<std::string> args;
+            args.push_back(exepath_.generic_string());
+
+            //
+            // Copy the args from the JSON
+            //
+            auto array = obj[JsonNameArgs];
+            for (auto it = array.begin(); it != array.end(); it++)
+            {
+                auto strobj = *it;
+                if (strobj.is_string())
+                    args.push_back(strobj.get<std::string>());
+            }
+
+            //
+            // Do any path substitution
+            //
+            std::string token = "$$EXEPATH$$";
+            std::string path = exepath_.parent_path().parent_path().generic_string();
+            for (size_t i = 0; i < args.size(); i++)
+            {
+                auto index = args[i].find(token);
+                if (index != std::string::npos)
+                {
+                    std::string newstr = args[i].substr(0, index);
+                    newstr += path;
+                    newstr += args[i].substr(index + token.length());
+                    args[i] = newstr;
+                }
+            }
+
+            //
+            // Quote any args that contain spaces
+            //
+            for (size_t i = 0; i < args.size(); i++)
+            {
+                std::string arg = args[i];
+                auto pos = arg.find(' ');
+                if (pos != std::string::npos)
+                {
+                    arg = "\"" + arg + "\"";
+                    args[i] = arg;
+                }
+            }
+
+            auto outcb = std::bind(&GDBServerBackend::readOut, this, std::placeholders::_1, std::placeholders::_2);
+            auto outerr = std::bind(&GDBServerBackend::readErr, this, std::placeholders::_1, std::placeholders::_2);
+            process_ = new PlatformProcess(args, outcb, outerr, true);
+
+            if (!process_->didStart())
+            {
+                delete process_;
+                process_ = nullptr;
+                return false;
+            }
+
+            return true;
+        }
+
+        void GDBServerBackend::readOut(const char* str, size_t n)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                if (str[i] == '\n')
+                {
+
+                    Message msg(Message::Type::Debug, "openocd");
+                    msg << out_;
+                    logger() << msg;
+                    out_.clear();
+                }
+                else
+                {
+                    out_ += str[i];
+                }
+            }
+        }
+
+        void GDBServerBackend::readErr(const char* str, size_t n)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                if (str[i] == '\n')
+                {
+
+                    Message msg(Message::Type::Debug, "openocd");
+                    msg << out_;
+                    logger() << msg;
+                    err_.clear();
+                }
+                else
+                {
+                    err_ += str[i];
+                }
+            }
+        }
+
         bool GDBServerBackend::restart()
         {
             auto it = mcus().begin();
@@ -70,7 +202,18 @@ namespace bwg
                 return false;
             }
 
-            nlohmann::json obj = nlohmann::json::parse(stream);
+            nlohmann::json obj;
+            
+            try {
+                obj = nlohmann::json::parse(stream);
+            }
+            catch (const nlohmann::detail::exception& ex)
+            {
+                Message msg(Message::Type::Error, ModuleName);
+                msg << "error reading JSON config file '" << config_file << "' - " << ex.what();
+                logger() << msg;
+                return false;
+            }
 
             if (!startProgram(config_file, obj))
                 return false;
@@ -158,6 +301,5 @@ namespace bwg
 
             return true;
         }
-
     }
 }

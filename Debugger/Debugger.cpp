@@ -59,6 +59,7 @@ namespace bwg
 			if (!backend_->initPhaseTwo())
 				return 1;
 
+#ifdef NOTYET
 			//
 			// Run the CM4 to main
 			//
@@ -67,6 +68,7 @@ namespace bwg
 			backend_->setStop("cm4", false, true);
 			backend_->run("cm0p", false);
 			backend_->run("cm4");
+#endif
 
 			std::string line;
 			while (true) 

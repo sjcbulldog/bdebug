@@ -115,6 +115,11 @@ namespace bwg
             return payload;
         }
 
+        bool GDBServerMCU::sendRemoteCommand(const std::string& command)
+        {
+            return true;
+        }
+
         std::string GDBServerMCU::cpuTypeName() const
         {
             std::string ret = "Unknown";

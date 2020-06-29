@@ -26,13 +26,11 @@
     <ClInclude Include="MCUDesc.h" />
     <ClInclude Include="GDBServerBackend.h" />
     <ClInclude Include="GDBServerMCU.h" />
-    <ClInclude Include="OpenOCDBackend.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GDBServerBackend.cpp" />
     <ClCompile Include="GDBServerMCU.cpp" />
     <ClCompile Include="ISymbolProvider.cpp" />
-    <ClCompile Include="OpenOCDBackend.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

@@ -35,9 +35,10 @@ namespace bwg
             bool setBreakpoint(BreakpointType type, uint32_t addr, uint32_t size) override;
 
         private:
+            bool validPacket(const std::string& str, std::string& payload);
             std::string sendPacketGetResponse(const std::string& pkt);
             bool sendPacket(const std::string& packet);
-            bool validPacket(const std::string& str, std::string& payload);
+            bool sendRemoteCommand(const std::string& command);
 
         private:
             GDBServerBackend* parent_;

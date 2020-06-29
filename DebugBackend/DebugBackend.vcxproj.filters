@@ -30,9 +30,6 @@
     <ClInclude Include="GDBServerMCU.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="OpenOCDBackend.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="ISymbolProvider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -45,9 +42,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="GDBServerMCU.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="OpenOCDBackend.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ISymbolProvider.cpp">

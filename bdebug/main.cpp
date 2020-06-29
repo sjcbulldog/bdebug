@@ -1,7 +1,7 @@
 #include <iostream>
 #include "Logger.h"
 #include "OStreamDestination.h"
-#include "OpenOCDBackend.h"
+#include "GDBServerBackend.h"
 #include "Debugger.h"
 #include "ElfReader.h"
 #include "ElfFile.h"
@@ -126,7 +126,7 @@ int main(int ac, char** av)
 	if (ret != 0)
 		return ret;
 
-	auto be = std::make_shared<OpenOCDBackend>(logger, configfile);
+	auto be = std::make_shared<GDBServerBackend>(logger, configfile);
 	if (openocd.length() > 0)
 		be->setExePath(openocd);
 	Debugger debugger(logger, be, elffiles);

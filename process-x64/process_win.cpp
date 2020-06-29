@@ -5,6 +5,7 @@
 #include <tlhelp32.h>
 #include <cstring>
 #include <stdexcept>
+#include <iostream>
 
 namespace TinyProcessLib {
 
@@ -44,6 +45,7 @@ Process::id_type Process::open(const std::vector<string_type> &arguments, const 
 #else
     command += (command.empty() ? "" : " ") + argument;
 #endif
+  std::wcout << "Command: " << command << std::endl;
   return open(command, path, environment);
 }
 

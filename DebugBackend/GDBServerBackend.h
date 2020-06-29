@@ -49,15 +49,11 @@ namespace bwg
 
             bool initPhaseTwo() override;
 
-        protected:
-            virtual bool startProgram(const std::filesystem::path& config_file, nlohmann::json& obj) = 0 ;
-
-            const std::filesystem::path& exePath() const {
-                return exepath_;
-            }
-
         private:
             bool connectMCUs(const std::filesystem::path& config_file, nlohmann::json& obj);
+            bool startProgram(const std::filesystem::path& config_file, nlohmann::json& obj);
+            void readOut(const char* data, size_t n);
+            void readErr(const char* data, size_t n);
 
         protected:
             constexpr static const char* ModuleName = "gdbserver-backend";
@@ -65,10 +61,14 @@ namespace bwg
             constexpr static const char* JsonNameMCUs = "mcus";
             constexpr static const char* JsonNameTag = "tag";
             constexpr static const char* JsonNameBackEndPort = "beport";
+            constexpr static const char* JsonNameArgs = "args";
 
         private:
             std::filesystem::path exepath_;
             std::string name_;
+            bwg::platform::PlatformProcess* process_;
+            std::string out_;
+            std::string err_;
         };
     }
 }
