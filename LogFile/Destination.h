@@ -2,7 +2,7 @@
 
 namespace bwg
 {
-	namespace logger
+	namespace logfile
 	{
 		class Message;
 

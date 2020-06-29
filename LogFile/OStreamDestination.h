@@ -5,7 +5,7 @@
 
 namespace bwg
 {
-	namespace logger
+	namespace logfile
 	{
 		class OStreamDestination : public Destination
 		{

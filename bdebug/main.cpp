@@ -8,7 +8,7 @@
 #include <map>
 
 using namespace bwg::elf;
-using namespace bwg::logger;
+using namespace bwg::logfile;
 using namespace bwg::backend;
 using namespace bwg::debug;
 

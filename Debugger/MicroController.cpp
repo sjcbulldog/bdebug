@@ -4,7 +4,7 @@
 #include "Debugger.h"
 
 using namespace bwg::backend;
-using namespace bwg::logger;
+using namespace bwg::logfile;
 using namespace bwg::elf;
 
 namespace bwg

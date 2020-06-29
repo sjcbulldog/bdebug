@@ -16,7 +16,7 @@ namespace bwg
 		class DebugBackend
 		{
 		public:
-			DebugBackend(bwg::logger::Logger &logger) : logger_(logger) {
+			DebugBackend(bwg::logfile::Logger &logger) : logger_(logger) {
 				symbols_ = nullptr;
 			}
 
@@ -27,17 +27,9 @@ namespace bwg
 				symbols_ = symbols;
 			}
 
-			void setStop(const std::string &tag, bool reset, bool main) {
-				auto it = mcus_.find(tag);
-				if (it != mcus_.end())
-				{
-					it->second->setStop(reset, main);
-				}
-			}
-
-
 			virtual bool restart() = 0;
-			virtual bool run(const std::string &mcu, bool wait = true) = 0;
+			virtual bool run(const std::string &mcu) = 0;
+			virtual bool stop(const std::string& mcu) = 0;
 
 			//
 			// Connect to the target
@@ -65,7 +57,7 @@ namespace bwg
 			std::shared_ptr<const bwg::elf::ElfSymbol> findSymbol(const std::string& mcu, const std::string& name) {
 				if (symbols_ == nullptr)
 				{
-					bwg::logger::Message msg(bwg::logger::Message::Type::Warning, "backend");
+					bwg::logfile::Message msg(bwg::logfile::Message::Type::Warning, "backend");
 					msg << "search for symbol '" << name << "' with no symbol provider registered";
 					logger_ << msg;
 					return nullptr;
@@ -75,7 +67,7 @@ namespace bwg
 			}
 
 		protected:
-			bwg::logger::Logger& logger() {
+			bwg::logfile::Logger& logger() {
 				return logger_;
 			}
 
@@ -100,7 +92,7 @@ namespace bwg
 			}
 
 		private:
-			bwg::logger::Logger& logger_;
+			bwg::logfile::Logger& logger_;
 			ISymbolProvider* symbols_;
 			std::map<std::string, std::shared_ptr<BackendMCU>> mcus_;
 			std::map<std::string, MCUDesc> desc_;

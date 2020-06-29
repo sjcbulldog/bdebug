@@ -5,14 +5,14 @@
 #include <thread>
 #include <fstream>
 
-using namespace bwg::logger;
+using namespace bwg::logfile;
 using namespace bwg::platform;
 
 namespace bwg
 {
     namespace backend
     {
-        GDBServerBackend::GDBServerBackend(bwg::logger::Logger& logger, const std::string& name) : DebugBackend(logger)
+        GDBServerBackend::GDBServerBackend(bwg::logfile::Logger& logger, const std::string& name) : DebugBackend(logger)
         {
             name_ = name;
             exepath_ = "openocd";
@@ -163,13 +163,22 @@ namespace bwg
             return it->second->restart();
         }
 
-        bool GDBServerBackend::run(const std::string& tag, bool wait)
+        bool GDBServerBackend::stop(const std::string& tag)
         {
             auto it = mcus().find(tag);
             if (it == mcus().end())
                 return false;
 
-            return it->second->run(wait);
+            return it->second->stop();
+        }
+
+        bool GDBServerBackend::run(const std::string& tag)
+        {
+            auto it = mcus().find(tag);
+            if (it == mcus().end())
+                return false;
+
+            return it->second->run();
         }
 
         bool GDBServerBackend::connect()

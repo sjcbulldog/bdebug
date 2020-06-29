@@ -7,7 +7,7 @@
 
 namespace bwg
 {
-	namespace logger
+	namespace logfile
 	{
 		class Destination;
 

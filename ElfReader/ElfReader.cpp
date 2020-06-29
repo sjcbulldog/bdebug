@@ -9,7 +9,7 @@
 #include <fstream>
 #include <iostream>
 
-using namespace bwg::logger;
+using namespace bwg::logfile;
 
 namespace bwg
 {

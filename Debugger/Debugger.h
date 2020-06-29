@@ -18,7 +18,7 @@ namespace bwg
 			friend class MicroController;
 
 		public:
-			Debugger(bwg::logger::Logger& logger, std::shared_ptr<bwg::backend::DebugBackend> be, 
+			Debugger(bwg::logfile::Logger& logger, std::shared_ptr<bwg::backend::DebugBackend> be, 
 					std::map<std::string, std::filesystem::path> &elffiles);
 			virtual ~Debugger();
 
@@ -33,7 +33,7 @@ namespace bwg
 			// These are shared with MicroController.  While C++ wouild allows MicroController to have
 			// access to everyting since it is a friend, we limit it to methods in this private section
 			//
-			bwg::logger::Logger& logger() {
+			bwg::logfile::Logger& logger() {
 				return logger_;
 			}
 
@@ -43,7 +43,7 @@ namespace bwg
 			bool loadElfFiles();
 
 		private:
-			bwg::logger::Logger& logger_;
+			bwg::logfile::Logger& logger_;
 			std::shared_ptr<bwg::backend::DebugBackend> backend_;
 			std::map<std::string, std::filesystem::path> elffiles_;
 			std::map<std::string, std::shared_ptr<MicroController>> mcus_;

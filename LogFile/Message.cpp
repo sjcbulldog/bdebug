@@ -2,7 +2,7 @@
 
 namespace bwg
 {
-	namespace logger
+	namespace logfile
 	{
 		Message::Message(Message::Type type, const std::string& module)
 		{

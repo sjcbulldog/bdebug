@@ -3,7 +3,7 @@
 #include <thread>
 #include <iostream>
 
-using namespace bwg::logger;
+using namespace bwg::logfile;
 using namespace bwg::backend;
 
 namespace bwg
@@ -59,16 +59,12 @@ namespace bwg
 			if (!backend_->initPhaseTwo())
 				return 1;
 
-#ifdef NOTYET
 			//
 			// Run the CM4 to main
 			//
 			backend_->restart();
-			backend_->setStop("cm0p", false, false);
-			backend_->setStop("cm4", false, true);
-			backend_->run("cm0p", false);
-			backend_->run("cm4");
-#endif
+			backend_->run("cm0p");
+			backend_->stop("cm0p");
 
 			std::string line;
 			while (true) 

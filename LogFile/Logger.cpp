@@ -4,7 +4,7 @@
 
 namespace bwg
 {
-	namespace logger
+	namespace logfile
 	{
 		Logger::Logger()
 		{

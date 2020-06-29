@@ -30,15 +30,20 @@ namespace bwg
             bool readRegisters();
             
             bool readVectorTable() override ;
-            bool run(bool wait = false) override;
+            bool run() override;
             bool restart() override;
+            bool stop() override;
             bool setBreakpoint(BreakpointType type, uint32_t addr, uint32_t size) override;
 
         private:
             bool validPacket(const std::string& str, std::string& payload);
-            std::string sendPacketGetResponse(const std::string& pkt);
+            bool sendPacketGetResponse(const std::string& pkt, std::string& resp);
             bool sendPacket(const std::string& packet);
-            bool sendRemoteCommand(const std::string& command);
+            bool receivePacket(std::string& packet);
+            bool sendRemoteCommand(const std::string& command, std::string& resp);
+
+            std::string encodeHex(const std::string& text);
+            std::string decodeHex(const std::string& hex);
 
         private:
             GDBServerBackend* parent_;

@@ -9,7 +9,7 @@ namespace bwg
 		class BackendMCU
 		{
 		public:
-			enum BreakpointType
+			enum class BreakpointType
 			{
 				Software,
 				Hardware,
@@ -31,28 +31,14 @@ namespace bwg
 				return tag_;
 			}
 
-			void setStop(bool reset, bool main) {
-				stop_at_reset_ = reset;
-				stop_at_main_ = main;
-			}
-
-			bool stopAtReset() const {
-				return stop_at_reset_;
-			}
-
-			bool stopAtMain() const {
-				return stop_at_main_;
-			}
-
 			virtual bool readVectorTable() = 0;
-			virtual bool run(bool wait) = 0 ;
+			virtual bool run() = 0 ;
+			virtual bool stop() = 0;
 			virtual bool restart() = 0;
 			virtual bool setBreakpoint(BreakpointType type, uint32_t addr, uint32_t size) = 0 ;
 
 		private:
 			std::string tag_;
-			bool stop_at_reset_;
-			bool stop_at_main_;
 		};
 	}
 }

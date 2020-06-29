@@ -6,7 +6,7 @@
 #include <thread>
 
 using namespace bwg::platform;
-using namespace bwg::logger;
+using namespace bwg::logfile;
 using namespace bwg::misc;
 
 namespace bwg
@@ -35,6 +35,32 @@ namespace bwg
         {
             if (socket_ != nullptr)
                 delete socket_;
+        }
+
+        std::string GDBServerMCU::encodeHex(const std::string& text)
+        {
+            std::string result;
+
+            for (char ch : text)
+                result += MiscUtilsHex::n2hexstr<uint8_t>(static_cast<uint8_t>(ch));
+
+            return result;
+        }
+
+        std::string GDBServerMCU::decodeHex(const std::string& hex)
+        {
+            std::string result;
+
+            assert((hex.length() % 2) == 0);
+
+            const char* str = hex.c_str();
+            for (int i = 0; i < hex.length(); i += 2)
+            {
+                char ch = static_cast<char>(MiscUtilsHex::hexToInt(str + i, 2));
+                result += ch;
+            }
+
+            return result;
         }
 
         bool GDBServerMCU::validPacket(const std::string& packet, std::string& payload)
@@ -94,29 +120,58 @@ namespace bwg
             return true;
         }
 
-        std::string GDBServerMCU::sendPacketGetResponse(const std::string& pkt)
+        bool GDBServerMCU::receivePacket(std::string& resp)
         {
-            std::string ret;
             std::vector<uint8_t> response;
-
-            if (!sendPacket(pkt))
-                return ret;
 
             std::string answer, payload;
             while (!validPacket(answer, payload))
             {
                 if (socket_->read(response) == -1)
-                    return ret;
+                    return false;
 
                 for (int i = 0; i < response.size(); i++)
                     answer += (char)response[i];
             }
 
-            return payload;
+            resp = payload;
+            return true;
         }
 
-        bool GDBServerMCU::sendRemoteCommand(const std::string& command)
+        bool GDBServerMCU::sendPacketGetResponse(const std::string& pkt, std::string &resp)
         {
+            if (!sendPacket(pkt))
+                return false;
+
+            if (!receivePacket(resp))
+                return false;
+
+            return true;
+        }
+
+        bool GDBServerMCU::sendRemoteCommand(const std::string& command, std::string &resp)
+        {
+            std::string pktresp;
+            std::string tosend;
+
+            resp.clear();
+
+            tosend = "qRcmd," + encodeHex(command);
+            if (!sendPacket(tosend))
+                return false;
+
+            do {
+                if (!receivePacket(pktresp))
+                    return false;
+
+                if (pktresp != "OK")
+                {
+                    if (pktresp.length() > 0 && pktresp[0] == 'O')
+                        resp += decodeHex(pktresp.substr(1));
+                }
+
+            } while (pktresp != "OK");
+
             return true;
         }
 
@@ -162,7 +217,11 @@ namespace bwg
             {
                 if (socket_->connect(addr, static_cast<uint16_t>(port)))
                 {
-                    std::string resp = sendPacketGetResponse("!");
+                    std::string resp;
+                    
+                    if (!sendPacketGetResponse("!", resp))
+                        return false;
+
                     if (resp == "OK")
                     {
                         connected = true;
@@ -180,9 +239,7 @@ namespace bwg
             std::string pkt, resp;
 
             pkt = "m " + MiscUtilsHex::n2hexstr<uint32_t>(addr) + ",4";
-            resp = sendPacketGetResponse(pkt);
-
-            if (resp.length() == 0)
+            if (!sendPacketGetResponse(pkt, resp))
                 return false;
 
             value = PLATFORM_SWAPU32(static_cast<uint32_t>(MiscUtilsHex::hexToInt(resp.c_str(), (int)resp.length())));
@@ -195,14 +252,13 @@ namespace bwg
             assert((length % 4) == 0);
 
             pkt = "m " + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + MiscUtilsHex::n2hexstr<uint32_t>(length);
-            resp = sendPacketGetResponse(pkt);
-
-            if (resp.length() == 0)
+            if (!sendPacketGetResponse(pkt, resp))
                 return false;
 
             data.resize(length);
 
-
+            // TODO - write the decoed
+            assert(false);
 
             return true;
         }
@@ -212,7 +268,9 @@ namespace bwg
             std::string pkt, resp;
 
             pkt = "qSupported:multiprocess+;swbreak+;hwbreak+;qRelocInsn+;fork-events+;vfork-events+;exec-events+;vContSupported+;QThreadEvents+;no-resumed+";
-            supported_ = sendPacketGetResponse(pkt);
+
+            if (!sendPacketGetResponse(pkt, supported_))
+                return false;
 
             if (supported_.length() == 0)
                 return false;
@@ -220,8 +278,7 @@ namespace bwg
             if (supported_.find("QStartNoAckMode+") != std::string::npos)
             {
                 pkt = "QStartNoAckMode";
-                resp = sendPacketGetResponse(pkt);
-                if (resp.length() == 0)
+                if (!sendPacketGetResponse(pkt, resp))
                     return false;
 
                 if (resp == "OK")
@@ -238,8 +295,7 @@ namespace bwg
         {
             std::string resp;
 
-            resp = sendPacketGetResponse("g");
-            if (resp.length() == 0)
+            if (!sendPacketGetResponse("g", resp))
                 return false;
 
             int index = 0;
@@ -312,8 +368,7 @@ namespace bwg
                 break;
             }
 
-            resp = sendPacketGetResponse(packet);
-            if (resp.length() == 0)
+            if (!sendPacketGetResponse(packet, resp))
                 return false;
 
             return true;
@@ -322,48 +377,55 @@ namespace bwg
         bool GDBServerMCU::restart()
         {
             std::string resp;
+            Message msg(Message::Type::Debug, GDBServerBackend::ModuleName);
 
-            readRegisters();
-            resp = sendPacket("vCont;c");
-            resp = sendPacketGetResponse("vCtrlC");
-            resp = sendPacketGetResponse("?");
-            readRegisters();
+            if (!sendRemoteCommand("reset init", resp))
+                return false;
+            msg.clear();
+            msg << resp;
+            parent_->logger() << msg;
+
+            if (!sendRemoteCommand("reset run", resp))
+                return false;
+            msg.clear();
+            msg << resp;
+            parent_->logger() << msg;
+
+            if (!sendRemoteCommand("sleep 200", resp))
+                return false;
+            msg.clear();
+            msg << resp;
+            parent_->logger() << msg;
+
+            if (!sendRemoteCommand("psoc6 reset_halt sysresetreq", resp))
+                return false;
+            msg.clear();
+            msg << resp;
+            parent_->logger() << msg;
+
+            if (!sendPacketGetResponse("?", resp))
+                return false;
 
             return true;
         }
 
-        bool GDBServerMCU::run(bool wait)
+        bool GDBServerMCU::stop()
         {
-            if (reset_ == 0)
-            {
-                if (!readVectorTable())
-                    return false;
-            }
+            std::string resp;
 
-            if (main_ == 0)
-            {
-                auto main = parent_->findSymbol(tag(), "main");
-                if (main != nullptr)
-                    main_ = static_cast<uint32_t>(main->value());
-            }
+            if (!sendPacketGetResponse("vCtrlC", resp))
+                return false;
 
-            if (stopAtMain())
-                setBreakpoint(BreakpointType::Hardware, main_, 2);
+            if (!sendPacketGetResponse("?", resp))
+                return false;
 
-            if (stopAtReset())
-                setBreakpoint(BreakpointType::Hardware, reset_, 2);
+            return true;
+        }
 
-            if (wait)
-            {
-                std::string resp = sendPacketGetResponse("c");
-                if (resp.length() == 0)
-                    return false;
-            }
-            else
-            {
-                if (!sendPacket("c"))
-                    return false;
-            }
+        bool GDBServerMCU::run()
+        {
+            if (!sendPacket("vCont;c"))
+                return false;
 
             return true;
         }

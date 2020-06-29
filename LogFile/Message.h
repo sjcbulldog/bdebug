@@ -5,7 +5,7 @@
 
 namespace bwg
 {
-	namespace logger
+	namespace logfile
 	{
 		class Message
 		{
@@ -22,6 +22,10 @@ namespace bwg
 		public:
 			Message(Type type, const std::string &module);
 			virtual ~Message();
+
+			void clear() {
+				text_.clear();
+			}
 
 			Type type() const {
 				return type_;

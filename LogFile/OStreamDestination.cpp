@@ -3,7 +3,7 @@
 
 namespace bwg
 {
-	namespace logger
+	namespace logfile
 	{
 		OStreamDestination::OStreamDestination(std::ostream& strm) : out_(strm)
 		{

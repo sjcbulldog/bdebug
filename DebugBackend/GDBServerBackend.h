@@ -20,7 +20,7 @@ namespace bwg
             friend class GDBServerMCU;
 
         public:
-            GDBServerBackend(bwg::logger::Logger& logger, const std::string& name);
+            GDBServerBackend(bwg::logfile::Logger& logger, const std::string& name);
             virtual ~GDBServerBackend();
 
             void setExePath(const std::filesystem::path& path) {
@@ -28,8 +28,9 @@ namespace bwg
             }
 
             bool restart() override;
-            bool run(const std::string& tag, bool wait = false) override;
+            bool run(const std::string& tag) override;
             bool connect() override;
+            bool stop(const std::string& mcu) override;
 
             std::list<std::string> mcuTags() override {
                 std::list<std::string> ret;

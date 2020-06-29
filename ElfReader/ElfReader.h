@@ -20,7 +20,7 @@ namespace bwg
 		class ElfReader
 		{
 		public:
-			ElfReader(ElfFile& efile, const std::filesystem::path& filename, bwg::logger::Logger& logger);
+			ElfReader(ElfFile& efile, const std::filesystem::path& filename, bwg::logfile::Logger& logger);
 			virtual ~ElfReader();
 
 			bool read();
@@ -48,7 +48,7 @@ namespace bwg
 			std::map<size_t, std::shared_ptr<ElfSection>> section_ptrs_;
 
 			ElfFile& efile_;
-			bwg::logger::Logger& logger_;
+			bwg::logfile::Logger& logger_;
 		};
 	}
 }
