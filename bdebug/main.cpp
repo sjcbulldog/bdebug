@@ -91,7 +91,7 @@ int main(int ac, char** av)
 				logger << msg;
 				ret = 1;
 			}
-			std::string tag = *av++;
+			std::string mcutag = *av++;
 			std::filesystem::path filename = *av++;
 			ac--;
 			ac--;
@@ -112,7 +112,7 @@ int main(int ac, char** av)
 				ret = 1;
 			}
 
-			elffiles.insert_or_assign(tag, filename);
+			elffiles.insert_or_assign(mcutag, filename);
 		}
 		else
 		{

@@ -14,7 +14,7 @@ namespace bwg
 		class MicroController
 		{
 		public:
-			MicroController(Debugger *debug, const std::string& tag, const bwg::backend::MCUDesc& desc);
+			MicroController(Debugger *debug, const std::string& mcutag, const bwg::backend::MCUDesc& desc);
 			virtual ~MicroController();
 
 			bool loadElfFile(const std::filesystem::path &elfFile);
@@ -24,7 +24,7 @@ namespace bwg
 
 		private:
 			Debugger* debug_;
-			std::string tag_;
+			std::string mcutag_;
 			const bwg::backend::MCUDesc& desc_;
 			bwg::elf::ElfFile elffile_;
 		};

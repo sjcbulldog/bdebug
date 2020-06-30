@@ -27,9 +27,12 @@ namespace bwg
 				symbols_ = symbols;
 			}
 
-			virtual bool restart() = 0;
+			virtual bool reset() = 0;
+			virtual bool reset(const std::string &mcutag) = 0;
 			virtual bool run(const std::string &mcu) = 0;
 			virtual bool stop(const std::string& mcu) = 0;
+			virtual bool waitForStop(const std::string& mcu) = 0;
+			virtual bool setBreakpoint(const std::string& mcutag, BreakpointType type, uint32_t addr, uint32_t size) = 0;
 
 			//
 			// Connect to the target
@@ -44,7 +47,7 @@ namespace bwg
 			//
 			// Return the descriptor for an MCU attached to the given descriptor
 			//
-			virtual const MCUDesc& desc(const std::string& tag) const = 0;
+			virtual const MCUDesc& desc(const std::string& mcutag) const = 0;
 
 			//
 			// Do any initialization that is required after the ELF file symbols have been loaded
@@ -71,12 +74,12 @@ namespace bwg
 				return logger_;
 			}
 
-			void setMCU(const std::string& tag, std::shared_ptr<BackendMCU> mcu) {
-				mcus_.insert_or_assign(tag, mcu);
+			void setMCU(const std::string& mcutag, std::shared_ptr<BackendMCU> mcu) {
+				mcus_.insert_or_assign(mcutag, mcu);
 			}
 
-			void setMCUDesc(const std::string& tag, const MCUDesc& desc) {
-				desc_.insert_or_assign(tag, desc);
+			void setMCUDesc(const std::string& mcutag, const MCUDesc& desc) {
+				desc_.insert_or_assign(mcutag, desc);
 			}
 
 			std::map<std::string, std::shared_ptr<BackendMCU>>& mcus() {

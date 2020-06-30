@@ -62,9 +62,8 @@ namespace bwg
 			//
 			// Run the CM4 to main
 			//
-			backend_->restart();
-			backend_->run("cm0p");
-			backend_->stop("cm0p");
+			backend_->reset("cm0p");
+			// backend_->run("cm0p");
 
 			std::string line;
 			while (true) 
@@ -86,21 +85,21 @@ namespace bwg
 
 		bool Debugger::createMCUs()
 		{
-			std::list<std::string> tags = backend_->mcuTags();
+			std::list<std::string> mcutags = backend_->mcuTags();
 
-			for (const std::string& tag : tags)
+			for (const std::string& mcutag : mcutags)
 			{
-				auto it = elffiles_.find(tag);
+				auto it = elffiles_.find(mcutag);
 				if (it != elffiles_.end())
 				{
 					//
 					// We have an elf file for this MCU
 					//
-					auto mcu = std::make_shared<MicroController>(this, tag, backend_->desc(tag));
+					auto mcu = std::make_shared<MicroController>(this, mcutag, backend_->desc(mcutag));
 					if (!mcu->loadElfFile(it->second))
 						return false;
 
-					mcus_.insert_or_assign(tag, mcu);
+					mcus_.insert_or_assign(mcutag, mcu);
 				}
 			}
 

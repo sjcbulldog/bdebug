@@ -27,10 +27,29 @@ namespace bwg
                 exepath_ = path;
             }
 
-            bool restart() override;
-            bool run(const std::string& tag) override;
+            //
+            // Connects to the backend and determines the types of MCUs attached
+            //
             bool connect() override;
+
+            //
+            // Reset the entire device, including all of the MCUs
+            //
+            bool reset() override;
+
+            //
+            // Reset a single device, it may work differently depending on
+            // the type of device.  If a device is reset, all of its dependent
+            // devices are reset as well.
+            //
+            bool reset(const std::string &mcutag) override;
+
+            //
+            //
+            bool run(const std::string& mcutag) override;
             bool stop(const std::string& mcu) override;
+            bool waitForStop(const std::string& mcu) override;
+            bool setBreakpoint(const std::string& mcutag, BreakpointType type, uint32_t addr, uint32_t size) override ;
 
             std::list<std::string> mcuTags() override {
                 std::list<std::string> ret;
@@ -41,8 +60,8 @@ namespace bwg
                 return ret;
             }
 
-            const MCUDesc& desc(const std::string& tag) const override {
-                auto it = descs().find(tag);
+            const MCUDesc& desc(const std::string& mcutag) const override {
+                auto it = descs().find(mcutag);
                 assert(it != descs().end());
 
                 return it->second;
@@ -60,7 +79,7 @@ namespace bwg
             constexpr static const char* ModuleName = "gdbserver-backend";
             constexpr static const char* JsonNameStartupDelay = "delay";
             constexpr static const char* JsonNameMCUs = "mcus";
-            constexpr static const char* JsonNameTag = "tag";
+            constexpr static const char* JsonNameTag = "mcutag";
             constexpr static const char* JsonNameBackEndPort = "beport";
             constexpr static const char* JsonNameArgs = "args";
 

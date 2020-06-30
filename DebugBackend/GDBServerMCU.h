@@ -16,7 +16,7 @@ namespace bwg
         class GDBServerMCU : public BackendMCU
         {
         public:
-            GDBServerMCU(GDBServerBackend *parent, const std::string &tag);
+            GDBServerMCU(GDBServerBackend *parent, const std::string & mcutag);
             virtual ~GDBServerMCU();
 
             bool connectSocket(const char *addr, uint16_t port);
@@ -29,10 +29,13 @@ namespace bwg
             bool readMemory(uint32_t addr, uint32_t length, std::vector<uint32_t>& data);
             bool readRegisters();
             
+            bool provideSymbols() override;
             bool readVectorTable() override ;
+            bool setThreadParams() override;
             bool run() override;
-            bool restart() override;
+            bool reset() override;
             bool stop() override;
+            bool waitForStop() override;
             bool setBreakpoint(BreakpointType type, uint32_t addr, uint32_t size) override;
 
         private:
@@ -60,6 +63,8 @@ namespace bwg
             uint32_t reset_;
             uint32_t main_;
             std::string vector_table_;
+
+            std::map<std::string, std::list<std::string>> cmds_;
 
             static std::list<std::string> register_names_;
 

@@ -45,7 +45,6 @@ Process::id_type Process::open(const std::vector<string_type> &arguments, const 
 #else
     command += (command.empty() ? "" : " ") + argument;
 #endif
-  std::wcout << "Command: " << command << std::endl;
   return open(command, path, environment);
 }
 

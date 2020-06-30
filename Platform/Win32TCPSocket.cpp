@@ -43,8 +43,12 @@ namespace bwg
 			hints.ai_protocol = IPPROTO_TCP;
 
 			std::string portstr = std::to_string(port);
-			if (getaddrinfo(addr.c_str(), portstr.c_str(), &hints, &result) != 0)
+			int retcore = getaddrinfo(addr.c_str(), portstr.c_str(), &hints, &result);
+			if (retcore != 0)
+			{
+				setOsError(static_cast<uint32_t>(retcore));
 				return false;
+			}
 
 			bool ret = false;
 			for (ptr = result; ptr != NULL; ptr = ptr->ai_next)
@@ -69,6 +73,21 @@ namespace bwg
 			return ret;
 		}
 
+		int Win32TCPSocket::readOne()
+		{
+			char ch;
+			int res;
+
+			res = recv(socket_, &ch, 1, 0);
+			if (res < 0)
+			{
+				setOsError(GetLastError());
+				return res;
+			}
+
+			return ch;
+		}
+
 		int Win32TCPSocket::read(std::vector<uint8_t>& data)
 		{
 			int res;
@@ -76,8 +95,7 @@ namespace bwg
 			res = recv(socket_, (char *)&buffer_[0], (int)buffer_.size(), 0);
 			if (res == SOCKET_ERROR)
 			{
-				DWORD err = GetLastError();
-				(void)err;
+				setOsError(GetLastError());
 				return -1;
 			}
 
@@ -100,13 +118,30 @@ namespace bwg
 			{
 				res = ::send(socket_, (const char*)&data[index], remaining, 0);
 				if (res == SOCKET_ERROR)
+				{
+					setOsError(GetLastError());
 					return -1;
+				}
 
 				remaining -= res;
 				index += res;
 			}
 
 			return index;
+		}
+
+		int Win32TCPSocket::writeOne(char ch)
+		{
+			int res;
+
+			res = ::send(socket_, &ch, 1, 0);
+			if (res < 0)
+			{
+				setOsError(GetLastError());
+				return res;
+			}
+
+			return 0;
 		}
 	}
 }

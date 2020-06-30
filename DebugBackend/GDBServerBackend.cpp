@@ -16,15 +16,17 @@ namespace bwg
         {
             name_ = name;
             exepath_ = "openocd";
+            process_ = nullptr;
         }
 
         GDBServerBackend::~GDBServerBackend()
         {
+            if (process_ != nullptr)
+                delete process_;
         }
 
         bool GDBServerBackend::startProgram(const std::filesystem::path& config_file, nlohmann::json& obj)
         {
-
             if (!obj.contains(JsonNameStartupDelay))
             {
                 Message msg(Message::Type::Error, ModuleName);
@@ -154,31 +156,58 @@ namespace bwg
             }
         }
 
-        bool GDBServerBackend::restart()
+        bool GDBServerBackend::reset()
         {
             auto it = mcus().begin();
             if (it == mcus().end())
                 return false;
 
-            return it->second->restart();
+            return it->second->reset();
         }
 
-        bool GDBServerBackend::stop(const std::string& tag)
+        bool GDBServerBackend::reset(const std::string &mcutag)
         {
-            auto it = mcus().find(tag);
+            auto it = mcus().find(mcutag);
+            if (it == mcus().end())
+                return false;
+
+            return it->second->reset();
+        }
+
+        bool GDBServerBackend::stop(const std::string& mcutag)
+        {
+            auto it = mcus().find(mcutag);
             if (it == mcus().end())
                 return false;
 
             return it->second->stop();
         }
 
-        bool GDBServerBackend::run(const std::string& tag)
+        bool GDBServerBackend::run(const std::string& mcutag)
         {
-            auto it = mcus().find(tag);
+            auto it = mcus().find(mcutag);
             if (it == mcus().end())
                 return false;
 
             return it->second->run();
+        }
+
+        bool GDBServerBackend::waitForStop(const std::string& mcutag)
+        {
+            auto it = mcus().find(mcutag);
+            if (it == mcus().end())
+                return false;
+
+            return it->second->waitForStop();
+        }
+
+        bool GDBServerBackend::setBreakpoint(const std::string &mcutag, BreakpointType type, uint32_t addr, uint32_t size)
+        {
+            auto it = mcus().find(mcutag);
+            if (it == mcus().end())
+                return false;
+
+            return it->second->setBreakpoint(type, addr, size);
         }
 
         bool GDBServerBackend::connect()
@@ -239,6 +268,12 @@ namespace bwg
             {
                 if (!pair.second->readVectorTable())
                     return false;
+
+                if (!pair.second->setThreadParams())
+                    return false;
+
+                if (!pair.second->provideSymbols())
+                    return false;
             }
 
             return true;
@@ -291,8 +326,8 @@ namespace bwg
                         return false;
                     }
 
-                    std::string tag = mcu[JsonNameTag].get<std::string>();
-                    auto mcuobj = std::make_shared<GDBServerMCU>(this, tag);
+                    std::string mcutag = mcu[JsonNameTag].get<std::string>();
+                    auto mcuobj = std::make_shared<GDBServerMCU>(this, mcutag);
                     int port = mcu[JsonNameBackEndPort].get<int>();
                     if (mcuobj->connectSocket("127.0.0.1", static_cast<uint16_t>(port)))
                     {
@@ -300,8 +335,8 @@ namespace bwg
                         {
                             if (mcuobj->queryDevice())
                             {
-                                setMCU(tag, mcuobj);
-                                setMCUDesc(tag, MCUDesc(mcuobj->cpuTypeName()));
+                                setMCU(mcutag, mcuobj);
+                                setMCUDesc(mcutag, MCUDesc(mcuobj->cpuTypeName()));
                             }
                         }
                     }

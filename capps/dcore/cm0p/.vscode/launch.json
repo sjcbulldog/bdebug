@@ -45,7 +45,7 @@
                 "set remotetimeout 15",
                 "monitor reset init",
                 // Comment this next line out if you don't want to reload program
-                "monitor program {./build/CY8CKIT-062S2-43012/Debug/appcm0p.hex}",
+                // "monitor program {./build/CY8CKIT-062S2-43012/Debug/appcm0p.hex}",
                 "monitor reset run",
                 "monitor sleep 200",
                 "monitor psoc6 reset_halt sysresetreq"

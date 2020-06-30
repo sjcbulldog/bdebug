@@ -18,7 +18,7 @@ namespace bwg
         //
         std::list<std::string> GDBServerMCU::register_names_ = { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "sp", "lr", "pc", "xPSR" };
 
-        GDBServerMCU::GDBServerMCU(GDBServerBackend *parent, const std::string &tag) : BackendMCU(tag)
+        GDBServerMCU::GDBServerMCU(GDBServerBackend *parent, const std::string & mcutag) : BackendMCU(mcutag)
         {
             parent_ = parent;
             socket_ = nullptr;
@@ -68,9 +68,6 @@ namespace bwg
             int index = 0;
             payload.clear();
 
-            while (packet[index] == '+')
-                index++;
-
             if (packet[index++] != '$')
                 return false;
 
@@ -101,7 +98,7 @@ namespace bwg
         {
             uint8_t sum = 0;
             std::vector<uint8_t> data(pkt.length() + 4);
-
+            int ack;
 
             data[0] = '$';
             memcpy(&data[1], &pkt[0], pkt.length());
@@ -114,8 +111,33 @@ namespace bwg
             data[pkt.length() + 2] = hex[0];
             data[pkt.length() + 3] = hex[1];
 
-            if (socket_->write(data) == -1)
-                return false;
+            bool ackrecv = !ack_mode_;
+            do
+            {
+                if (socket_->write(data) == -1)
+                {
+                    Message msg(Message::Type::Error, "network");
+                    msg << "underlying platform network returned error " << socket_->osError();
+                    parent_->logger() << msg;
+                    return false;
+                }
+
+                if (ack_mode_)
+                {
+                    ack = socket_->readOne();
+                    if (ack == -1)
+                    {
+                        Message msg(Message::Type::Error, "network");
+                        msg << "underlying platform network returned error " << MiscUtilsHex::n2hexstr<uint32_t>(socket_->osError());
+                        parent_->logger() << msg;
+                        return false;
+                    }
+
+                    if (ack == '+')
+                        ackrecv = true;
+                }
+
+            } while (!ackrecv);
 
             return true;
         }
@@ -128,17 +150,41 @@ namespace bwg
             while (!validPacket(answer, payload))
             {
                 if (socket_->read(response) == -1)
+                {
+                    Message msg(Message::Type::Error, "network");
+                    msg << "underlying platform network returned error " << socket_->osError();
+                    parent_->logger() << msg;
                     return false;
+                }
 
                 for (int i = 0; i < response.size(); i++)
                     answer += (char)response[i];
+
+                while (answer.length() > 0 && answer[0] == '+')
+                {
+                    //
+                    // The GDB Server seems to go ack happy at times, drop any stand alone ack characters.
+                    //
+                    answer = answer.substr(1);
+                }
+            }
+
+            if (ack_mode_)
+            {
+                if (socket_->writeOne('+') == -1)
+                {
+                    Message msg(Message::Type::Error, "network");
+                    msg << "underlying platform network returned error " << socket_->osError();
+                    parent_->logger() << msg;
+                    return false;
+                }
             }
 
             resp = payload;
             return true;
         }
 
-        bool GDBServerMCU::sendPacketGetResponse(const std::string& pkt, std::string &resp)
+        bool GDBServerMCU::sendPacketGetResponse(const std::string& pkt, std::string& resp)
         {
             if (!sendPacket(pkt))
                 return false;
@@ -263,6 +309,19 @@ namespace bwg
             return true;
         }
 
+        bool GDBServerMCU::setThreadParams()
+        {
+            std::string resp;
+
+            if (!sendPacketGetResponse("Hc-1", resp))
+                return false;
+
+            if (!sendPacketGetResponse("Hg-1", resp))
+                return false;
+
+            return true;
+        }
+
         bool GDBServerMCU::initialize()
         {
             std::string pkt, resp;
@@ -313,7 +372,7 @@ namespace bwg
         {
             uint32_t sp, reset;
 
-            auto vtable = parent_->findSymbol(tag(), vector_table_);
+            auto vtable = parent_->findSymbol(mcutag(), vector_table_);
             if (vtable == nullptr)
             {
                 Message msg(Message::Type::Warning, GDBServerBackend::ModuleName);
@@ -352,19 +411,19 @@ namespace bwg
             switch (type)
             {
             case BreakpointType::Software:
-                packet = "z0," + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + MiscUtilsHex::n2hexstr<uint32_t>(size);
+                packet = "Z0," + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + std::to_string(size);
                 break;
             case BreakpointType::Hardware:
-                packet = "z1," + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + MiscUtilsHex::n2hexstr<uint32_t>(size);
+                packet = "Z1," + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + std::to_string(size);
                 break;
             case BreakpointType::Write:
-                packet = "z2," + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + MiscUtilsHex::n2hexstr<uint32_t>(size);
+                packet = "Z2," + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + std::to_string(size);
                 break;
             case BreakpointType::Read:
-                packet = "z3," + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + MiscUtilsHex::n2hexstr<uint32_t>(size);
+                packet = "Z3," + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + std::to_string(size);
                 break;
             case BreakpointType::Access:
-                packet = "z4," + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + MiscUtilsHex::n2hexstr<uint32_t>(size);
+                packet = "Z4," + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + std::to_string(size);
                 break;
             }
 
@@ -374,37 +433,103 @@ namespace bwg
             return true;
         }
 
-        bool GDBServerMCU::restart()
+        bool GDBServerMCU::provideSymbols()
+        {
+            sendPacket("qSymbol::");
+
+            while (true)
+            {
+                std::string resp;
+                if (!receivePacket(resp))
+                    return false;
+
+                if (resp == "OK")
+                    break;
+
+                auto index = resp.find(':');
+                if (index == std::string::npos)
+                    return false;
+
+                resp = decodeHex(resp.substr(index + 1));
+                auto symbol = parent_->findSymbol(mcutag(), resp);
+                
+                std::string reply = "qSymbol:";
+                if (symbol == nullptr)
+                {
+                    reply += ":";
+                }
+                else
+                {
+                    reply += MiscUtilsHex::n2hexstr<uint32_t>(static_cast<uint32_t>(symbol->value())) + ":";
+                }
+                reply += encodeHex(resp);
+
+                if (!sendPacket(reply))
+                    return false;
+            }
+
+            return true;
+        }
+
+        bool GDBServerMCU::reset()
         {
             std::string resp;
             Message msg(Message::Type::Debug, GDBServerBackend::ModuleName);
 
-            if (!sendRemoteCommand("reset init", resp))
-                return false;
-            msg.clear();
-            msg << resp;
-            parent_->logger() << msg;
+            if (mcutag() == "cm0p")
+            {
+                readRegisters();
 
-            if (!sendRemoteCommand("reset run", resp))
-                return false;
-            msg.clear();
-            msg << resp;
-            parent_->logger() << msg;
+                if (!sendRemoteCommand("psoc6 reset_halt sysresetreq", resp))
+                    return false;
 
-            if (!sendRemoteCommand("sleep 200", resp))
-                return false;
-            msg.clear();
-            msg << resp;
-            parent_->logger() << msg;
+                msg.clear();
+                msg << resp;
+                parent_->logger() << msg;
 
-            if (!sendRemoteCommand("psoc6 reset_halt sysresetreq", resp))
-                return false;
-            msg.clear();
-            msg << resp;
-            parent_->logger() << msg;
+                if (!sendRemoteCommand("delay 200", resp))
+                    return false;
 
-            if (!sendPacketGetResponse("?", resp))
-                return false;
+                msg.clear();
+                msg << resp;
+                parent_->logger() << msg;
+
+                if (!setBreakpoint(BreakpointType::Hardware, 0x10000F20, 2))
+                    return false;
+
+                readRegisters();
+
+                if (!sendRemoteCommand("reset run", resp))
+                    return false;
+
+                if (!sendPacketGetResponse("?", resp))
+                    return false;
+
+                readRegisters();
+            }
+            else
+            {
+                if (!sendRemoteCommand("reset run", resp))
+                    return false;
+
+                msg.clear();
+                msg << resp;
+                parent_->logger() << msg;
+
+                if (!sendRemoteCommand("sleep 200", resp))
+                    return false;
+
+                msg.clear();
+                msg << resp;
+                parent_->logger() << msg;
+
+                if (!sendRemoteCommand("psoc6 reset_halt sysresetreq", resp))
+                    return false;
+
+                msg.clear();
+                msg << resp;
+                parent_->logger() << msg;
+            }
 
             return true;
         }
@@ -412,20 +537,44 @@ namespace bwg
         bool GDBServerMCU::stop()
         {
             std::string resp;
+            std::vector<uint8_t> data;
 
-            if (!sendPacketGetResponse("vCtrlC", resp))
-                return false;
+            data.push_back(0x03);
+            socket_->write(data);
 
             if (!sendPacketGetResponse("?", resp))
                 return false;
+
+            readRegisters();
 
             return true;
         }
 
         bool GDBServerMCU::run()
         {
-            if (!sendPacket("vCont;c"))
+            std::string resp;
+
+            if (!sendPacketGetResponse("vCont?", resp))
                 return false;
+
+            if (!sendPacketGetResponse("vCont;c", resp))
+                return false;
+
+            return true;
+        }
+
+        bool GDBServerMCU::waitForStop()
+        {
+            std::string resp;
+
+            do {
+                if (!receivePacket(resp))
+                    return false;
+
+                if (resp == "OK" || resp[0] != 'O')
+                    break;
+
+            } while (true);
 
             return true;
         }
@@ -440,7 +589,7 @@ namespace bwg
             cputype_ = (value >> 4) & 0xFFF;
 
             Message msg(Message::Type::Debug, GDBServerBackend::ModuleName);
-            msg << "connected to CPU '" << cpuTypeName() << "' with tag '" << tag() << "' on port '" << port_;
+            msg << "connected to CPU '" << cpuTypeName() << "' with mcutag '" << mcutag() << "' on port '" << port_;
             parent_->logger() << msg;
 
             return true;

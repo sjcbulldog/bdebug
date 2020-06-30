@@ -11,10 +11,10 @@ namespace bwg
 {
 	namespace debug
 	{
-		MicroController::MicroController(Debugger *debug, const std::string& tag, const MCUDesc &desc) : desc_(desc)
+		MicroController::MicroController(Debugger *debug, const std::string& mcutag, const MCUDesc &desc) : desc_(desc)
 		{
 			debug_ = debug;
-			tag_ = tag;
+			mcutag_ = mcutag;
 		}
 
 		MicroController::~MicroController()

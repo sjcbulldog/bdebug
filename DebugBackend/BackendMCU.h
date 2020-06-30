@@ -1,5 +1,6 @@
 #pragma once
 
+#include "BreakpointType.h"
 #include <string>
 
 namespace bwg
@@ -9,36 +10,32 @@ namespace bwg
 		class BackendMCU
 		{
 		public:
-			enum class BreakpointType
-			{
-				Software,
-				Hardware,
-				Read,
-				Write,
-				Access
-			};
+
 
 		public:
-			BackendMCU(const std::string& tag) {
-				tag_ = tag;
+			BackendMCU(const std::string& mcutag) {
+				mcutag_ = mcutag;
 			}
 
 			virtual ~BackendMCU() {
 
 			}
 
-			const std::string tag() const {
-				return tag_;
+			const std::string mcutag() const {
+				return mcutag_;
 			}
 
 			virtual bool readVectorTable() = 0;
+			virtual bool setThreadParams() = 0;
+			virtual bool provideSymbols() = 0;
 			virtual bool run() = 0 ;
 			virtual bool stop() = 0;
-			virtual bool restart() = 0;
+			virtual bool reset() = 0;
 			virtual bool setBreakpoint(BreakpointType type, uint32_t addr, uint32_t size) = 0 ;
+			virtual bool waitForStop() = 0 ;
 
 		private:
-			std::string tag_;
+			std::string mcutag_;
 		};
 	}
 }

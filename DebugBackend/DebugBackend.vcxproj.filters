@@ -36,6 +36,9 @@
     <ClInclude Include="BackendMCU.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="BreakpointType.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GDBServerBackend.cpp">

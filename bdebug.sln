@@ -28,6 +28,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tiny-process-library", "pro
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MiscUtils", "MiscUtils\MiscUtils.vcxproj", "{DF0315BE-5316-42D2-B836-7DF48C19D274}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "config", "config", "{BF9C4434-EFB7-4232-BDC1-B88E0C059D44}"
+	ProjectSection(SolutionItems) = preProject
+		config\kitprog3-psoc6.cfg = config\kitprog3-psoc6.cfg
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
