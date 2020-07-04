@@ -129,7 +129,15 @@ int main(int ac, char** av)
 	auto be = std::make_shared<GDBServerBackend>(logger, configfile);
 	if (openocd.length() > 0)
 		be->setExePath(openocd);
-	Debugger debugger(logger, be, elffiles);
+
+	Debugger debugger(logger, be);
+	if (!debugger.loadElfFiles(elffiles))
+	{
+		Message msg(Message::Type::Error, "cmdline");
+		msg << "failure loading ELF files ";
+		logger << msg;
+		return 1;
+	}
 
 	ret = debugger.run();
 	return ret;

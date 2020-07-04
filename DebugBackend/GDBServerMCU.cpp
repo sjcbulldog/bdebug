@@ -18,7 +18,7 @@ namespace bwg
         //
         std::list<std::string> GDBServerMCU::register_names_ = { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "sp", "lr", "pc", "xPSR" };
 
-        GDBServerMCU::GDBServerMCU(GDBServerBackend *parent, const std::string & mcutag) : BackendMCU(mcutag)
+        GDBServerMCU::GDBServerMCU(GDBServerBackend *parent, const std::string & mcutag, bool master, const std::string &hostaddr, uint16_t port) : BackendMCU(mcutag, master)
         {
             parent_ = parent;
             socket_ = nullptr;
@@ -29,12 +29,37 @@ namespace bwg
             vector_table_ = "__Vectors";
             reset_ = 0;
             main_ = 0;
+
+            thread_ = new std::thread(&GDBServerMCU::mcuThread, this, hostaddr, port);
         }
 
         GDBServerMCU::~GDBServerMCU()
         {
             if (socket_ != nullptr)
                 delete socket_;
+        }
+
+        void GDBServerMCU::mcuThread(const std::string& hostaddr, uint16_t port)
+        {
+            if (!connectSocket(hostaddr.c_str(), port))
+            {
+                setState(MCUState::FailedConnect);
+                return;
+            }
+
+            if (!initialize())
+            {
+                setState(MCUState::FailedInitialization);
+                return;
+            }
+
+            if (!queryDevice())
+            {
+                setState(MCUState::FailedInitialization);
+                return;
+            }
+
+            parent_->setMCUDesc(mcutag(), MCUDesc(cpuTypeName()));
         }
 
         std::string GDBServerMCU::encodeHex(const std::string& text)
@@ -309,19 +334,6 @@ namespace bwg
             return true;
         }
 
-        bool GDBServerMCU::setThreadParams()
-        {
-            std::string resp;
-
-            if (!sendPacketGetResponse("Hc-1", resp))
-                return false;
-
-            if (!sendPacketGetResponse("Hg-1", resp))
-                return false;
-
-            return true;
-        }
-
         bool GDBServerMCU::initialize()
         {
             std::string pkt, resp;
@@ -364,42 +376,6 @@ namespace bwg
                 registers_.insert_or_assign(reg, v);
                 index += 8;
             }
-
-            return true;
-        }
-
-        bool GDBServerMCU::readVectorTable()
-        {
-            uint32_t sp, reset;
-
-            auto vtable = parent_->findSymbol(mcutag(), vector_table_);
-            if (vtable == nullptr)
-            {
-                Message msg(Message::Type::Warning, GDBServerBackend::ModuleName);
-                msg << "symbol '" << vector_table_ << "' not found in loaded ELF file, cannot find vector table";
-                parent_->logger() << msg;
-                return false;
-            }
-
-            uint32_t addr = static_cast<uint32_t>(vtable->value());
-            if (!readMemory(addr, sp))
-            {
-                Message msg(Message::Type::Warning, GDBServerBackend::ModuleName);
-                msg << "cannot read vector table at address " << bwg::misc::MiscUtilsHex::n2hexstr<uint32_t>(addr);
-                parent_->logger() << msg;
-                return false;
-            }
-
-            addr += 4;
-            if (!readMemory(addr, reset))
-            {
-                Message msg(Message::Type::Warning, GDBServerBackend::ModuleName);
-                msg << "cannot read vector table at address " << bwg::misc::MiscUtilsHex::n2hexstr<uint32_t>(addr);
-                parent_->logger() << msg;
-                return false;
-            }
-
-            reset_ = reset;
 
             return true;
         }
@@ -559,22 +535,6 @@ namespace bwg
 
             if (!sendPacketGetResponse("vCont;c", resp))
                 return false;
-
-            return true;
-        }
-
-        bool GDBServerMCU::waitForStop()
-        {
-            std::string resp;
-
-            do {
-                if (!receivePacket(resp))
-                    return false;
-
-                if (resp == "OK" || resp[0] != 'O')
-                    break;
-
-            } while (true);
 
             return true;
         }

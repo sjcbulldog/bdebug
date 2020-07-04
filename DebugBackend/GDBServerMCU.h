@@ -6,6 +6,7 @@
 #include <string>
 #include <list>
 #include <map>
+#include <thread>
 
 namespace bwg
 {
@@ -16,7 +17,7 @@ namespace bwg
         class GDBServerMCU : public BackendMCU
         {
         public:
-            GDBServerMCU(GDBServerBackend *parent, const std::string & mcutag);
+            GDBServerMCU(GDBServerBackend* parent, const std::string& mcutag, bool master, const std::string& hostaddr, uint16_t port);
             virtual ~GDBServerMCU();
 
             bool connectSocket(const char *addr, uint16_t port);
@@ -30,15 +31,13 @@ namespace bwg
             bool readRegisters();
             
             bool provideSymbols() override;
-            bool readVectorTable() override ;
-            bool setThreadParams() override;
             bool run() override;
             bool reset() override;
             bool stop() override;
-            bool waitForStop() override;
             bool setBreakpoint(BreakpointType type, uint32_t addr, uint32_t size) override;
 
         private:
+            void mcuThread(const std::string &hostaddr, uint16_t port);
             bool validPacket(const std::string& str, std::string& payload);
             bool sendPacketGetResponse(const std::string& pkt, std::string& resp);
             bool sendPacket(const std::string& packet);
@@ -49,6 +48,7 @@ namespace bwg
             std::string decodeHex(const std::string& hex);
 
         private:
+            std::thread* thread_;
             GDBServerBackend* parent_;
             bwg::platform::NetworkTCPSocket* socket_;
             uint16_t port_;

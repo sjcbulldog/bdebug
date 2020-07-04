@@ -1,6 +1,7 @@
 #include "GDBServerBackend.h"
 #include "GDBServerMCU.h"
 #include "PlatformLocations.h"
+#include "DebuggerRequest.h"
 #include "json.hpp"
 #include <thread>
 #include <fstream>
@@ -23,6 +24,19 @@ namespace bwg
         {
             if (process_ != nullptr)
                 delete process_;
+        }
+
+        bool GDBServerBackend::ready()
+        {
+            bool ret = true;
+
+            for (auto pair : mcus())
+            {
+                if (pair.second->state() != BackendMCU::MCUState::Running)
+                    ret = false;
+            }
+
+            return ret;
         }
 
         bool GDBServerBackend::startProgram(const std::filesystem::path& config_file, nlohmann::json& obj)
@@ -158,20 +172,17 @@ namespace bwg
 
         bool GDBServerBackend::reset()
         {
-            auto it = mcus().begin();
-            if (it == mcus().end())
-                return false;
+            for (auto pair : mcus())
+            {
+                if (pair.second->isMaster())
+                {
+                    auto req = pair.second->request(DebuggerRequest::BackendRequests::Reset);
+                    req->waitFor();
+                    return true;
+                }
+            }
 
-            return it->second->reset();
-        }
-
-        bool GDBServerBackend::reset(const std::string &mcutag)
-        {
-            auto it = mcus().find(mcutag);
-            if (it == mcus().end())
-                return false;
-
-            return it->second->reset();
+            return false;
         }
 
         bool GDBServerBackend::stop(const std::string& mcutag)
@@ -180,7 +191,8 @@ namespace bwg
             if (it == mcus().end())
                 return false;
 
-            return it->second->stop();
+            auto req = it->second->request(DebuggerRequest::BackendRequests::Stop);
+            return req->waitFor();
         }
 
         bool GDBServerBackend::run(const std::string& mcutag)
@@ -189,25 +201,23 @@ namespace bwg
             if (it == mcus().end())
                 return false;
 
-            return it->second->run();
-        }
-
-        bool GDBServerBackend::waitForStop(const std::string& mcutag)
-        {
-            auto it = mcus().find(mcutag);
-            if (it == mcus().end())
-                return false;
-
-            return it->second->waitForStop();
+            auto req = it->second->request(DebuggerRequest::BackendRequests::Run);
+            return req->waitFor();
         }
 
         bool GDBServerBackend::setBreakpoint(const std::string &mcutag, BreakpointType type, uint32_t addr, uint32_t size)
         {
+            (void)type;
+            (void)addr;
+            (void)size;
+
             auto it = mcus().find(mcutag);
             if (it == mcus().end())
                 return false;
 
-            return it->second->setBreakpoint(type, addr, size);
+            // auto req = it->second->request(DebuggerRequest::BackendRequests::Breakpoint, type, addr, size);
+            auto req = it->second->request(DebuggerRequest::BackendRequests::Breakpoint);
+            return req->waitFor();
         }
 
         bool GDBServerBackend::connect()
@@ -262,23 +272,6 @@ namespace bwg
             return true;
         }
 
-        bool GDBServerBackend::initPhaseTwo()
-        {
-            for (auto pair : mcus())
-            {
-                if (!pair.second->readVectorTable())
-                    return false;
-
-                if (!pair.second->setThreadParams())
-                    return false;
-
-                if (!pair.second->provideSymbols())
-                    return false;
-            }
-
-            return true;
-        }
-
         bool GDBServerBackend::connectMCUs(const std::filesystem::path& config_file, nlohmann::json& obj)
         {
             //
@@ -310,6 +303,22 @@ namespace bwg
                         return false;
                     }
 
+                    if (!mcu.contains(JsonNameMaster))
+                    {
+                        Message msg(Message::Type::Error, ModuleName);
+                        msg << "config file '" << config_file << "' mcus section, is missing the '" << JsonNameMaster << "' field";
+                        logger() << msg;
+                        return false;
+                    }
+
+                    if (!mcu[JsonNameMaster].is_boolean())
+                    {
+                        Message msg(Message::Type::Error, ModuleName);
+                        msg << "config file '" << config_file << "' has the '" << JsonNameMaster << "' field, but it is not a boolean";
+                        logger() << msg;
+                        return false;
+                    }
+
                     if (!mcu.contains(JsonNameBackEndPort))
                     {
                         Message msg(Message::Type::Error, ModuleName);
@@ -327,23 +336,19 @@ namespace bwg
                     }
 
                     std::string mcutag = mcu[JsonNameTag].get<std::string>();
-                    auto mcuobj = std::make_shared<GDBServerMCU>(this, mcutag);
                     int port = mcu[JsonNameBackEndPort].get<int>();
-                    if (mcuobj->connectSocket("127.0.0.1", static_cast<uint16_t>(port)))
-                    {
-                        if (mcuobj->initialize())
-                        {
-                            if (mcuobj->queryDevice())
-                            {
-                                setMCU(mcutag, mcuobj);
-                                setMCUDesc(mcutag, MCUDesc(mcuobj->cpuTypeName()));
-                            }
-                        }
-                    }
+
+                    bool master = mcu[JsonNameMaster].get<bool>();
+                    startMCUThread(mcutag, master, "127.0.0.1", static_cast<uint16_t>(port));
                 }
             }
-
             return true;
+        }
+
+        void GDBServerBackend::startMCUThread(const std::string &mcutag, bool master, const char* addr, uint16_t port)
+        {
+            auto mcuobj = std::make_shared<GDBServerMCU>(this, mcutag, master, addr, port);
+            setMCU(mcutag, mcuobj);
         }
     }
 }

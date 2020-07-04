@@ -23,6 +23,10 @@ namespace bwg
 				destinations_.push_back(dest);
 			}
 
+			void clearDestinations() {
+				destinations_.clear();
+			}
+
 			void enable(Message::Type type);
 			void disable(Message::Type type);
 

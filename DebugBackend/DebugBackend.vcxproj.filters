@@ -13,6 +13,15 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Requests">
+      <UniqueIdentifier>{a7919233-1a65-4ff6-82dc-ae6e4fccbcf9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Requests\Header Files">
+      <UniqueIdentifier>{a4351509-d2a8-4eef-8418-78304d7da9be}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Requests\Source Files">
+      <UniqueIdentifier>{f98ad1f1-8bdf-4afc-b8b5-8053c0b40124}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DebugBackend.h">
@@ -39,6 +48,12 @@
     <ClInclude Include="BreakpointType.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DebuggerRequest.h">
+      <Filter>Requests\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BreakpointRequest.h">
+      <Filter>Requests\Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GDBServerBackend.cpp">
@@ -49,6 +64,9 @@
     </ClCompile>
     <ClCompile Include="ISymbolProvider.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DebuggerRequest.cpp">
+      <Filter>Requests\Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -20,15 +20,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BackendMCU.h" />
+    <ClInclude Include="BreakpointRequest.h" />
     <ClInclude Include="BreakpointType.h" />
     <ClInclude Include="cortexreg.h" />
     <ClInclude Include="DebugBackend.h" />
+    <ClInclude Include="DebuggerRequest.h" />
     <ClInclude Include="ISymbolProvider.h" />
     <ClInclude Include="MCUDesc.h" />
     <ClInclude Include="GDBServerBackend.h" />
     <ClInclude Include="GDBServerMCU.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="DebuggerRequest.cpp" />
     <ClCompile Include="GDBServerBackend.cpp" />
     <ClCompile Include="GDBServerMCU.cpp" />
     <ClCompile Include="ISymbolProvider.cpp" />

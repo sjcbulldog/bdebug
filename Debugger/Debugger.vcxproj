@@ -20,11 +20,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Debugger.cpp" />
-    <ClCompile Include="MicroController.cpp" />
+    <ClCompile Include="MCUWatcher.cpp" />
+    <ClCompile Include="UIOMessageDestination.cpp" />
+    <ClCompile Include="UserInputOutputDevice.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Debugger.h" />
-    <ClInclude Include="MicroController.h" />
+    <ClInclude Include="DebuggerCommand.h" />
+    <ClInclude Include="MCUWatcher.h" />
+    <ClInclude Include="UIOMessageDestination.h" />
+    <ClInclude Include="UserInputOutputDevice.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

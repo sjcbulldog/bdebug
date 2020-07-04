@@ -8,6 +8,7 @@
 #include <map>
 #include <filesystem>
 #include <cassert>
+#include <thread>
 
 namespace bwg
 {
@@ -33,6 +34,11 @@ namespace bwg
             bool connect() override;
 
             //
+            // Returns true when all of the MCUs are ready
+            //
+            bool ready() override;
+
+            //
             // Reset the entire device, including all of the MCUs
             //
             bool reset() override;
@@ -42,13 +48,8 @@ namespace bwg
             // the type of device.  If a device is reset, all of its dependent
             // devices are reset as well.
             //
-            bool reset(const std::string &mcutag) override;
-
-            //
-            //
             bool run(const std::string& mcutag) override;
             bool stop(const std::string& mcu) override;
-            bool waitForStop(const std::string& mcu) override;
             bool setBreakpoint(const std::string& mcutag, BreakpointType type, uint32_t addr, uint32_t size) override ;
 
             std::list<std::string> mcuTags() override {
@@ -67,19 +68,19 @@ namespace bwg
                 return it->second;
             }
 
-            bool initPhaseTwo() override;
-
         private:
             bool connectMCUs(const std::filesystem::path& config_file, nlohmann::json& obj);
             bool startProgram(const std::filesystem::path& config_file, nlohmann::json& obj);
             void readOut(const char* data, size_t n);
             void readErr(const char* data, size_t n);
+            void startMCUThread(const std::string& mcutag, bool master, const char* addr, uint16_t port);
 
         protected:
             constexpr static const char* ModuleName = "gdbserver-backend";
             constexpr static const char* JsonNameStartupDelay = "delay";
             constexpr static const char* JsonNameMCUs = "mcus";
             constexpr static const char* JsonNameTag = "mcutag";
+            constexpr static const char* JsonNameMaster = "master";
             constexpr static const char* JsonNameBackEndPort = "beport";
             constexpr static const char* JsonNameArgs = "args";
 
@@ -89,6 +90,7 @@ namespace bwg
             bwg::platform::PlatformProcess* process_;
             std::string out_;
             std::string err_;
+            std::map<std::string, std::thread*> threads_;
         };
     }
 }

@@ -1,33 +1,58 @@
 #include "Debugger.h"
-#include "MicroController.h"
+#include "ElfReader.h"
+#include "UIOMessageDestination.h"
+#include "MCUWatcher.h"
 #include <thread>
 #include <iostream>
 
 using namespace bwg::logfile;
 using namespace bwg::backend;
+using namespace bwg::elf;
 
 namespace bwg
 {
 	namespace debug
 	{
-		Debugger::Debugger(Logger& logger, std::shared_ptr<DebugBackend> be, 
-			std::map<std::string, std::filesystem::path> &elffiles) : logger_(logger)
+		Debugger::Debugger(Logger& logger, std::shared_ptr<DebugBackend> be) : logger_(logger)
 		{
 			backend_ = be;
-			elffiles_ = elffiles;
+			prompt_ = "BDebug> ";
+			initialized_ = false;
+
+			logger.clearDestinations();
+			auto dest = std::make_shared<UIOMessageDestination>(input_output_);
+			logger.addDestination(dest);
 		}
 
 		Debugger::~Debugger()
 		{
 		}
 
+		bool Debugger::loadElfFiles(std::map<std::string, std::filesystem::path>& elffiles)
+		{
+			for (auto pair : elffiles)
+			{
+				auto file = std::make_shared<ElfFile>();
+				ElfReader rdr(*file, pair.second, logger_);
+
+				if (!rdr.read())
+					return false;
+
+				elffiles_[pair.first] = file;
+			}
+
+			backend_->setSymbolProvider(this);
+
+			return true;
+		}
+
 		std::shared_ptr<const bwg::elf::ElfSymbol> Debugger::findSymbol(const std::string& mcu, const std::string& name)
 		{
-			auto it = mcus_.find(mcu);
-			if (it == mcus_.end())
+			auto it = elffiles_.find(mcu);
+			if (it == elffiles_.end())
 				return nullptr;
 
-			return it->second->elffile().findSymbol(name);
+			return it->second->findSymbol(name);
 		}
 
 		int Debugger::run()
@@ -35,42 +60,36 @@ namespace bwg
 			int ret = 0;
 
 			//
-			// Connect to the debug hardware and figure out what we are connected to.  Nothing
-			// in the backend should need symbols here as they are not yet available
+			// Connect to the debug hardware and figure out what we are connected to.  This should
+			// create the MCU threads, one per MCU monitoring the traffic with the backend.
 			//
 			if (!connect())
 				return 1;
 
 			//
-			// Create the MCU devices and read any ELF files associated
+			// Wait for the backend to be ready
 			//
-			if (!createMCUs())
-				return 1;
+			while (!backend_->ready())
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(250));
+			}
+
+			Message msg(Message::Type::Debug, "debugger");
+			msg << "all threads ready";
+			logger_ << msg;
+
+			watcher_ = std::make_shared<Watcher>();
 
 			//
-			// Setup the backend to get symbols for the various MCUs
+			// Now prompt the user
 			//
-			backend_->setSymbolProvider(this);
-
-			//
-			// Now have the backend do phase two initialization, which is anything that 
-			// requires symbols from the elf file
-			//
-			if (!backend_->initPhaseTwo())
-				return 1;
-
-			//
-			// Run the CM4 to main
-			//
-			backend_->reset("cm0p");
-			// backend_->run("cm0p");
-
 			std::string line;
 			while (true) 
 			{
-				std::cout << "BDG> ";
-				std::cout.flush();
-				std::getline(std::cin, line);
+				if (!input_.getLine(line))
+					break;
+
+
 				if (line.length() >= 4 && line.substr(0, 4) == "quit")
 					break;
 			}
@@ -81,29 +100,6 @@ namespace bwg
 		bool Debugger::connect()
 		{
 			return backend_->connect();
-		}
-
-		bool Debugger::createMCUs()
-		{
-			std::list<std::string> mcutags = backend_->mcuTags();
-
-			for (const std::string& mcutag : mcutags)
-			{
-				auto it = elffiles_.find(mcutag);
-				if (it != elffiles_.end())
-				{
-					//
-					// We have an elf file for this MCU
-					//
-					auto mcu = std::make_shared<MicroController>(this, mcutag, backend_->desc(mcutag));
-					if (!mcu->loadElfFile(it->second))
-						return false;
-
-					mcus_.insert_or_assign(mcutag, mcu);
-				}
-			}
-
-			return true;
 		}
 	}
 }

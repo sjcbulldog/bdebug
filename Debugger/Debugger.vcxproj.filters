@@ -18,7 +18,13 @@
     <ClCompile Include="Debugger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MicroController.cpp">
+    <ClCompile Include="UserInputOutputDevice.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="UIOMessageDestination.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MCUWatcher.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -26,7 +32,16 @@
     <ClInclude Include="Debugger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MicroController.h">
+    <ClInclude Include="UserInputOutputDevice.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="UIOMessageDestination.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MCUWatcher.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DebuggerCommand.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
