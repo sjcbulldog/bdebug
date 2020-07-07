@@ -1,7 +1,11 @@
 #include "Debugger.h"
 #include "ElfReader.h"
-#include "UIOMessageDestination.h"
 #include "MCUWatcher.h"
+
+#include "QuitCommand.h"
+#include "RunCommand.h"
+#include "BreakpointCommand.h"
+
 #include <thread>
 #include <iostream>
 
@@ -17,15 +21,25 @@ namespace bwg
 		{
 			backend_ = be;
 			prompt_ = "BDebug> ";
-			initialized_ = false;
 
-			logger.clearDestinations();
-			auto dest = std::make_shared<UIOMessageDestination>(input_output_);
-			logger.addDestination(dest);
+			initializeCommands();
+
+			running_ = true;
 		}
 
 		Debugger::~Debugger()
 		{
+			if (watcher_ != nullptr)
+				watcher_->stop();
+		}
+
+		void Debugger::initializeCommands()
+		{
+			std::shared_ptr<DebuggerCommand> cmd;
+
+			commands_["quit"] = std::make_shared<QuitCommand>(this);
+			commands_["run"] = std::make_shared<RunCommand>(this);
+			commands_["break"] = std::make_shared<BreakpointCommand>(this);
 		}
 
 		bool Debugger::loadElfFiles(std::map<std::string, std::filesystem::path>& elffiles)
@@ -78,20 +92,17 @@ namespace bwg
 			msg << "all threads ready";
 			logger_ << msg;
 
-			watcher_ = std::make_shared<Watcher>();
+			backend_->reset();
+
+			watcher_ = std::make_shared<MCUWatcher>(backend_);
 
 			//
 			// Now prompt the user
 			//
 			std::string line;
-			while (true) 
+			while (running_) 
 			{
-				if (!input_.getLine(line))
-					break;
-
-
-				if (line.length() >= 4 && line.substr(0, 4) == "quit")
-					break;
+				runOneCommand();
 			}
 
 			return ret;
@@ -100,6 +111,68 @@ namespace bwg
 		bool Debugger::connect()
 		{
 			return backend_->connect();
+		}
+
+		std::shared_ptr<DebuggerCommand> Debugger::findCmdByKey(const std::string& key) 
+		{
+			auto it = commands_.find(key);
+			if (it == commands_.end())
+				return nullptr;
+
+			return it->second;
+		}
+
+		void Debugger::runOneCommand()
+		{
+			std::string line;
+
+			if (std::cin.bad() || std::cin.eof() || std::cin.fail())
+			{
+				running_ = false;
+				return;
+			}
+
+			std::cout << prompt_;
+			std::cout.flush();
+
+			if (!std::getline(std::cin, line))
+			{
+				running_ = false;
+				return;
+			}
+
+			std::string key, args;
+
+			size_t pos = line.find(' ');
+			if (pos == std::string::npos)
+			{
+				key = line;
+			}
+			else
+			{
+				key = line.substr(0, pos);
+				args = line.substr(pos);
+			}
+
+			if (key.length() == 0)
+				return;
+
+			std::shared_ptr<DebuggerCommand> cmd = findCmdByKey(key);
+			if (cmd == nullptr)
+			{
+				Message msg(Message::Type::Error, "cmdline");
+				msg << "unknown command '" << key << "'";
+				logger_ << msg;
+			}
+			else
+			{
+				bool parsed = false;
+				std::vector<CmdArg> argvec;
+
+				parsed = cmd->parseArgs(mi_, args, argvec);
+				if (parsed)
+					cmd->exec(key, argvec);
+			}
 		}
 	}
 }

@@ -74,6 +74,26 @@ namespace bwg
 				return *this;
 			}
 
+			Message& operator<<(int8_t v) {
+				text_ += std::to_string(v);
+				return *this;
+			}
+
+			Message& operator<<(int16_t v) {
+				text_ += std::to_string(v);
+				return *this;
+			}
+
+			Message& operator<<(int32_t v) {
+				text_ += std::to_string(v);
+				return *this;
+			}
+
+			Message& operator<<(int64_t v) {
+				text_ += std::to_string(v);
+				return *this;
+			}
+
 			std::string messageString() const;
 
 		private:

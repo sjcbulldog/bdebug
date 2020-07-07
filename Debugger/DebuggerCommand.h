@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Logger.h"
+#include "DebugBackend.h"
 #include <variant>
 #include <string>
 #include <vector>
@@ -7,28 +9,33 @@
 
 namespace bwg
 {
-	namespace debugger
+	namespace debug
 	{
 		class Debugger;
-		typedef std::variant<uint64_t, std::string, double> CmdArg;
+		typedef std::variant<uint64_t, int64_t, std::string, double> CmdArg;
 
 		class DebuggerCommand
 		{
 		public:
-			DebuggerCommand(d::shared_ptr<Debugger> debugger) {
-				debugger_ = debugger;
-			}
+			DebuggerCommand(Debugger* debugger);
+			virtual ~DebuggerCommand();
 
-			virtual ~DebuggerCommand() {
-			}
+			virtual bool parseArgs(bool mi, const std::string& line, std::vector<CmdArg>& args) =  0;
+			virtual bool exec(const std::string& line, std::vector<CmdArg>& args) = 0 ;
 
-			virtual bool parseHuman(const std::string& line, std::vector<CmdArg>& args);
-			virtual bool parseMachineInterface(const std::string& line, std::vector<CmdArg>& args);
-			virtual bool exec(const std::string& line, std::vector<CmdArg>& args);
+		protected:
+			bwg::logfile::Logger& logger();
+			std::shared_ptr<bwg::backend::DebugBackend> backend();
+			Debugger* debugger() { return debugger_; }
+
+			std::vector<CmdArg> toTokens(const std::string& line);
+			size_t skipSpaces(const std::string& line, size_t index);
+
+			bool parseUnsignedInteger(const std::string& token, uint64_t& value);
+			std::string toString(const std::vector<CmdArg>& args);
 
 		private:
-			std::shared_ptr<Debugger> debugger_;
-
+			Debugger *debugger_;
 		};
 	}
 }

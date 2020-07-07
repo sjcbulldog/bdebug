@@ -12,8 +12,6 @@ namespace bwg
 {
 	namespace backend
 	{
-		class MCUDesc;
-
 		class DebugBackend
 		{
 		public:
@@ -28,22 +26,22 @@ namespace bwg
 				symbols_ = symbols;
 			}
 
+			void setAllReset() {
+				for (auto pair : mcus_)
+				{
+					pair.second->setState(BackendMCU::MCUState::Reset);
+				}
+			}
+
 			virtual bool connect() = 0;
 			virtual bool ready() = 0;
 			virtual bool reset() = 0;
+			virtual bool run() = 0;
 			virtual bool run(const std::string &mcu) = 0;
+			virtual bool stop() = 0 ;
 			virtual bool stop(const std::string& mcu) = 0;
-			virtual bool setBreakpoint(const std::string& mcutag, BreakpointType type, uint32_t addr, uint32_t size) = 0;
-
-			//
-			// Return the sets of MCUs on the target device
-			//
-			virtual std::list<std::string> mcuTags() = 0;
-
-			//
-			// Return the descriptor for an MCU attached to the given descriptor
-			//
-			virtual const MCUDesc& desc(const std::string& mcutag) const = 0;
+			virtual bool setBreakpoint(const std::string& mcutag, BreakpointType type, uint64_t addr, uint64_t size) = 0;
+			virtual bool removeBreakpoint(const std::string& mcutag, BreakpointType type, uint64_t addr, uint64_t size) = 0;
 
 			//
 			// Find a symbol for the requested MCU by asking the symbol provider
@@ -60,38 +58,51 @@ namespace bwg
 				return symbols_->findSymbol(mcu, name);
 			}
 
-		protected:
 			bwg::logfile::Logger& logger() {
 				return logger_;
 			}
 
+			std::list<std::shared_ptr<BackendMCU>> mcus() {
+				std::list<std::shared_ptr<BackendMCU>> mculist;
+
+				for (auto pair : mcus_)
+					mculist.push_back(pair.second);
+
+				return mculist;
+			}
+
+			std::list<std::string> mcuTags() {
+				std::list<std::string> ret;
+
+				for (auto pair : mcus_)
+					ret.push_back(pair.first);
+
+					return ret;
+			}
+
+			bool isMCUTagValid(const std::string& mcutag) {
+				auto it = mcus_.find(mcutag);
+					return it != mcus_.end();
+			}
+
+			std::shared_ptr<BackendMCU> getMCUByTag(const std::string& mcutag) {
+				auto it = mcus_.find(mcutag);
+				if (it == mcus_.end())
+					return nullptr;
+
+				return it->second;
+			}
+
+		protected:
 			void setMCU(const std::string& mcutag, std::shared_ptr<BackendMCU> mcu) {
 				std::lock_guard<std::mutex> guard(backend_lock_);
 				mcus_.insert_or_assign(mcutag, mcu);
-			}
-
-			void setMCUDesc(const std::string& mcutag, const MCUDesc& desc) {
-				std::lock_guard<std::mutex> guard(backend_lock_);
-				desc_.insert_or_assign(mcutag, desc);
-			}
-
-			std::map<std::string, std::shared_ptr<BackendMCU>>& mcus() {
-				return mcus_;
-			}
-
-			std::map<std::string, MCUDesc>& descs() {
-				return desc_;
-			}
-
-			const std::map<std::string, MCUDesc>& descs() const {
-				return desc_;
 			}
 
 		private:
 			bwg::logfile::Logger& logger_;
 			ISymbolProvider* symbols_;
 			std::map<std::string, std::shared_ptr<BackendMCU>> mcus_;
-			std::map<std::string, MCUDesc> desc_;
 			std::mutex backend_lock_;
 		};
 	}

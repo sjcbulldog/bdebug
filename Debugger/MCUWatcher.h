@@ -5,7 +5,7 @@
 
 namespace bwg
 {
-	namespace debugger
+	namespace debug
 	{
 		class MCUWatcher
 		{

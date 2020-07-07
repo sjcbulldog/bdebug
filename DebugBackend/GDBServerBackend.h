@@ -49,24 +49,12 @@ namespace bwg
             // devices are reset as well.
             //
             bool run(const std::string& mcutag) override;
+            bool run();
             bool stop(const std::string& mcu) override;
-            bool setBreakpoint(const std::string& mcutag, BreakpointType type, uint32_t addr, uint32_t size) override ;
+            bool stop();
+            bool setBreakpoint(const std::string& mcutag, BreakpointType type, uint64_t addr, uint64_t size) override ;
+            bool removeBreakpoint(const std::string& mcutag, BreakpointType type, uint64_t addr, uint64_t size) override;
 
-            std::list<std::string> mcuTags() override {
-                std::list<std::string> ret;
-
-                for (auto pair : descs())
-                    ret.push_back(pair.first);
-
-                return ret;
-            }
-
-            const MCUDesc& desc(const std::string& mcutag) const override {
-                auto it = descs().find(mcutag);
-                assert(it != descs().end());
-
-                return it->second;
-            }
 
         private:
             bool connectMCUs(const std::filesystem::path& config_file, nlohmann::json& obj);

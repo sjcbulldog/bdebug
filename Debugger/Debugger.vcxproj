@@ -19,17 +19,20 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BreakpointCommand.cpp" />
     <ClCompile Include="Debugger.cpp" />
+    <ClCompile Include="DebuggerCommand.cpp" />
     <ClCompile Include="MCUWatcher.cpp" />
-    <ClCompile Include="UIOMessageDestination.cpp" />
-    <ClCompile Include="UserInputOutputDevice.cpp" />
+    <ClCompile Include="QuitCommand.cpp" />
+    <ClCompile Include="RunCommand.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BreakpointCommand.h" />
     <ClInclude Include="Debugger.h" />
     <ClInclude Include="DebuggerCommand.h" />
     <ClInclude Include="MCUWatcher.h" />
-    <ClInclude Include="UIOMessageDestination.h" />
-    <ClInclude Include="UserInputOutputDevice.h" />
+    <ClInclude Include="QuitCommand.h" />
+    <ClInclude Include="RunCommand.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -148,7 +151,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)DebugBackend;$(SolutionDir)ElfReader;$(SolutionDir)LogFile;$(SolutionDir)Platform</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)DebugBackend;$(SolutionDir)ElfReader;$(SolutionDir)LogFile;$(SolutionDir)Platform;$(SolutionDir)MiscUtils</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
@@ -168,7 +171,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)DebugBackend;$(SolutionDir)ElfReader;$(SolutionDir)LogFile;$(SolutionDir)Platform</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)DebugBackend;$(SolutionDir)ElfReader;$(SolutionDir)LogFile;$(SolutionDir)Platform;$(SolutionDir)MiscUtils</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>

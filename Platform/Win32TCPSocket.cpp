@@ -73,6 +73,16 @@ namespace bwg
 			return ret;
 		}
 
+		bool Win32TCPSocket::hasData()
+		{
+			unsigned long value;
+
+			if (ioctlsocket(socket_, FIONREAD, &value) != 0)
+				return false;
+
+			return value > 0;
+		}
+
 		int Win32TCPSocket::readOne()
 		{
 			char ch;

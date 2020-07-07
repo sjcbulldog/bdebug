@@ -4,7 +4,6 @@
 #include "DebugBackend.h"
 #include "ISymbolProvider.h"
 #include "ElfFile.h"
-#include "UserInputOutputDevice.h"
 #include <filesystem>
 #include <string>
 #include <map>
@@ -13,11 +12,13 @@ namespace bwg
 {
 	namespace debug
 	{
-		class Watcher;
+		class MCUWatcher;
+		class DebuggerCommand;
 
 		class Debugger : public bwg::backend::ISymbolProvider
 		{
 			friend class DebuggerCommand;
+			friend class QuitCommand;
 
 		public:
 			Debugger(bwg::logfile::Logger& logger, std::shared_ptr<bwg::backend::DebugBackend> be);
@@ -26,41 +27,55 @@ namespace bwg
 			int run();
 			bool loadElfFiles(std::map<std::string, std::filesystem::path>& elffiles);
 
-		protected:
 			std::shared_ptr<const bwg::elf::ElfSymbol> findSymbol(const std::string& mcu, const std::string& name) override;
-			std::shared_ptr<DebugBackend> backend() {
-				return backend_;
-			}
 
 		private:
-			enum class State {
-
-			};
-
-		private:
-			//
-			// These are shared with MicroController.  While C++ wouild allows MicroController to have
-			// access to everyting since it is a friend, we limit it to methods in this private section
-			//
-			bwg::logfile::Logger& logger() {
-				return logger_;
-			}
-
-		private:
+			void initializeCommands();
 			bool connect();
-			bool createMCUs();
+			void runOneCommand();
+			std::shared_ptr<DebuggerCommand> findCmdByKey(const std::string& key);
 
 		private:
+			//
+			// For sending messages to the user
+			//
 			bwg::logfile::Logger& logger_;
 
-			UserInputOutputDevice input_output_;
-			std::shared_ptr<Watcher> watcher_;
+			//
+			// If true, we are connected to an IDE, us an abbreviated and easier to parse
+			// set of messages
+			//
+			bool mi_;
 
+			//
+			// Watches all of the MCUs and reports any change of state to the user
+			// 
+			std::shared_ptr<MCUWatcher> watcher_;
+
+			//
+			// The debugger backend, does all of the heavy lifting
+			//
 			std::shared_ptr<bwg::backend::DebugBackend> backend_;
+
+			//
+			// The elf files loaded per MCU
+			//
 			std::map<std::string, std::shared_ptr<bwg::elf::ElfFile>> elffiles_;
 
+			//
+			// If true, we are running the command loop
+			//
+			bool running_;
+
+			//
+			// The propmt for the user before expecting a command
+			//
 			std::string prompt_;
-			bool initialized_;
+
+			//
+			// The set of commands the debugger understands
+			//
+			std::map<std::string, std::shared_ptr<DebuggerCommand>> commands_;
 		};
 	}
 }

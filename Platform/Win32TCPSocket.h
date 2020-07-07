@@ -16,6 +16,7 @@ namespace bwg
 			virtual ~Win32TCPSocket();
 
 			bool connect(const std::string& addr, uint16_t port) override ;
+			virtual bool hasData();
 			int read(std::vector<uint8_t>& data) override ;
 			int readOne() override;
 			int write(const std::vector<uint8_t>& data) override ;

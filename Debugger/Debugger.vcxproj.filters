@@ -13,36 +13,54 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Commands">
+      <UniqueIdentifier>{f58bca89-4ad1-4180-bb9b-4396fb6e1d00}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Commands\Header Files">
+      <UniqueIdentifier>{4137250e-39a5-473c-8b0c-7c02690fa64b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Commands\Source Files">
+      <UniqueIdentifier>{03ebb14f-8843-4bd3-8d25-04684aec36ff}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Debugger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="UserInputOutputDevice.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="UIOMessageDestination.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="MCUWatcher.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="QuitCommand.cpp">
+      <Filter>Commands\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BreakpointCommand.cpp">
+      <Filter>Commands\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RunCommand.cpp">
+      <Filter>Commands\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DebuggerCommand.cpp">
+      <Filter>Commands\Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Debugger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="UserInputOutputDevice.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="UIOMessageDestination.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="MCUWatcher.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DebuggerCommand.h">
-      <Filter>Header Files</Filter>
+      <Filter>Commands\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="QuitCommand.h">
+      <Filter>Commands\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BreakpointCommand.h">
+      <Filter>Commands\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RunCommand.h">
+      <Filter>Commands\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

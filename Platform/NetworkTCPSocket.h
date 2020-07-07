@@ -15,6 +15,7 @@ namespace bwg
 			virtual ~NetworkTCPSocket();
 
 			virtual bool connect(const std::string& addr, uint16_t port) = 0;
+			virtual bool hasData() = 0;
 			virtual int read(std::vector<uint8_t>& data) = 0 ;
 			virtual int readOne() = 0 ;
 

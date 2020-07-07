@@ -1,8 +1,10 @@
 #include "GDBServerMCU.h"
 #include "GDBServerBackend.h"
+#include "BreakpointRequest.h"
 #include "Message.h"
 #include "MiscUtilsHex.h"
 #include "platcompiler.h"
+#include "DebugBackend.h"
 #include <thread>
 
 using namespace bwg::platform;
@@ -18,11 +20,9 @@ namespace bwg
         //
         std::list<std::string> GDBServerMCU::register_names_ = { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "sp", "lr", "pc", "xPSR" };
 
-        GDBServerMCU::GDBServerMCU(GDBServerBackend *parent, const std::string & mcutag, bool master, const std::string &hostaddr, uint16_t port) : BackendMCU(mcutag, master)
+        GDBServerMCU::GDBServerMCU(GDBServerBackend *parent, const std::string & mcutag, bool master, const std::string &hostaddr, uint16_t port) : BackendMCU(*parent, mcutag, master)
         {
-            parent_ = parent;
             socket_ = nullptr;
-            state_ = 0;
             port_ = 0xFFFF;
             cputype_ = 0xFFFF;
             ack_mode_ = true;
@@ -37,6 +37,47 @@ namespace bwg
         {
             if (socket_ != nullptr)
                 delete socket_;
+        }
+
+        void GDBServerMCU::doRequest(std::shared_ptr<DebuggerRequest> req)
+        {
+            bool st = false;
+
+            Message msg(Message::Type::Debug, "backend");
+            msg << "GDBServerMCU dequed request " << req->toString();
+            backend().logger() << msg;
+            req->setStatus(DebuggerRequest::RequestCompletionStatus::Running);
+
+            switch (req->type())
+            {
+            case DebuggerRequest::BackendRequests::Breakpoint:
+            {
+                auto bk = std::dynamic_pointer_cast<BreakpointRequest>(req);
+                assert(bk != nullptr);
+                if (bk->set())
+                    setBreakpoint(bk->type(), bk->addr(), bk->size());
+                else
+                    removeBreakpoint(bk->type(), bk->addr(), bk->size());
+            }
+            break;
+            case DebuggerRequest::BackendRequests::Run:
+                st = run();
+                break;
+            case DebuggerRequest::BackendRequests::Stop:
+                st = stop();
+                break;
+            case DebuggerRequest::BackendRequests::Reset:
+                st = reset();
+                break;
+            default:
+                assert(false);
+                break;
+            }
+
+            if (st)
+                req->setStatus(DebuggerRequest::RequestCompletionStatus::Success);
+            else
+                req->setStatus(DebuggerRequest::RequestCompletionStatus::Error);
         }
 
         void GDBServerMCU::mcuThread(const std::string& hostaddr, uint16_t port)
@@ -59,7 +100,36 @@ namespace bwg
                 return;
             }
 
-            parent_->setMCUDesc(mcutag(), MCUDesc(cpuTypeName()));
+            setState(MCUState::WaitingForReset);
+
+            while (true)
+            {
+                std::shared_ptr<DebuggerRequest> req;
+                bool workdone = false;
+
+                req = next();
+                if (req != nullptr)
+                {
+                    doRequest(req);
+                    workdone = true;
+                }
+
+                if (socket_->hasData())
+                {
+                    std::string packet;
+                    receivePacket(packet);
+                    if (packet[0] == 'T')
+                    {
+                        setState(MCUState::Stopped);
+                    }
+                    workdone = true;
+                }
+
+                if (!workdone)
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                }
+            }
         }
 
         std::string GDBServerMCU::encodeHex(const std::string& text)
@@ -125,6 +195,10 @@ namespace bwg
             std::vector<uint8_t> data(pkt.length() + 4);
             int ack;
 
+            Message msg(Message::Type::Debug, "gdbserver");
+            msg << mcutag() << ": sending packet '" << pkt << "'";
+            backend().logger() << msg;
+
             data[0] = '$';
             memcpy(&data[1], &pkt[0], pkt.length());
             data[pkt.length() + 1] = '#';
@@ -141,9 +215,9 @@ namespace bwg
             {
                 if (socket_->write(data) == -1)
                 {
-                    Message msg(Message::Type::Error, "network");
+                    msg = Message(Message::Type::Error, "gdbserver");
                     msg << "underlying platform network returned error " << socket_->osError();
-                    parent_->logger() << msg;
+                    backend().logger() << msg;
                     return false;
                 }
 
@@ -152,9 +226,9 @@ namespace bwg
                     ack = socket_->readOne();
                     if (ack == -1)
                     {
-                        Message msg(Message::Type::Error, "network");
+                        msg = Message(Message::Type::Error, "gdbserver");
                         msg << "underlying platform network returned error " << MiscUtilsHex::n2hexstr<uint32_t>(socket_->osError());
-                        parent_->logger() << msg;
+                        backend().logger() << msg;
                         return false;
                     }
 
@@ -176,9 +250,9 @@ namespace bwg
             {
                 if (socket_->read(response) == -1)
                 {
-                    Message msg(Message::Type::Error, "network");
+                    Message msg(Message::Type::Error, "gdbserver");
                     msg << "underlying platform network returned error " << socket_->osError();
-                    parent_->logger() << msg;
+                    backend().logger() << msg;
                     return false;
                 }
 
@@ -198,11 +272,22 @@ namespace bwg
             {
                 if (socket_->writeOne('+') == -1)
                 {
-                    Message msg(Message::Type::Error, "network");
+                    Message msg(Message::Type::Error, "gdbserver");
                     msg << "underlying platform network returned error " << socket_->osError();
-                    parent_->logger() << msg;
+                    backend().logger() << msg;
                     return false;
                 }
+            }
+
+            Message msg(Message::Type::Debug, "gdbserver");
+            msg << mcutag() << ": received packet '" << payload << "'";
+            backend().logger() << msg;
+
+            if (payload.length() >= 3 && payload.substr(0, 3) == "T05")
+            {
+                msg = Message(Message::Type::Debug, "gdbserver");
+                msg << mcutag() << ": received packet '" << payload << "'";
+                backend().logger() << msg;
             }
 
             resp = payload;
@@ -380,26 +465,55 @@ namespace bwg
             return true;
         }
 
-        bool GDBServerMCU::setBreakpoint(BreakpointType type, uint32_t addr, uint32_t size)
+        bool GDBServerMCU::setBreakpoint(BreakpointType type, uint64_t addr, uint64_t size)
         {
             std::string packet, resp;
 
             switch (type)
             {
             case BreakpointType::Software:
-                packet = "Z0," + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + std::to_string(size);
+                packet = "Z0," + MiscUtilsHex::n2hexstr<uint64_t>(addr) + "," + std::to_string(size);
                 break;
             case BreakpointType::Hardware:
-                packet = "Z1," + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + std::to_string(size);
+                packet = "Z1," + MiscUtilsHex::n2hexstr<uint64_t>(addr) + "," + std::to_string(size);
                 break;
             case BreakpointType::Write:
-                packet = "Z2," + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + std::to_string(size);
+                packet = "Z2," + MiscUtilsHex::n2hexstr<uint64_t>(addr) + "," + std::to_string(size);
                 break;
             case BreakpointType::Read:
-                packet = "Z3," + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + std::to_string(size);
+                packet = "Z3," + MiscUtilsHex::n2hexstr<uint64_t>(addr) + "," + std::to_string(size);
                 break;
             case BreakpointType::Access:
-                packet = "Z4," + MiscUtilsHex::n2hexstr<uint32_t>(addr) + "," + std::to_string(size);
+                packet = "Z4," + MiscUtilsHex::n2hexstr<uint64_t>(addr) + "," + std::to_string(size);
+                break;
+            }
+
+            if (!sendPacketGetResponse(packet, resp))
+                return false;
+
+            return true;
+        }
+
+        bool GDBServerMCU::removeBreakpoint(BreakpointType type, uint64_t addr, uint64_t size)
+        {
+            std::string packet, resp;
+
+            switch (type)
+            {
+            case BreakpointType::Software:
+                packet = "z0," + MiscUtilsHex::n2hexstr<uint64_t>(addr) + "," + std::to_string(size);
+                break;
+            case BreakpointType::Hardware:
+                packet = "z1," + MiscUtilsHex::n2hexstr<uint64_t>(addr) + "," + std::to_string(size);
+                break;
+            case BreakpointType::Write:
+                packet = "z2," + MiscUtilsHex::n2hexstr<uint64_t>(addr) + "," + std::to_string(size);
+                break;
+            case BreakpointType::Read:
+                packet = "z3," + MiscUtilsHex::n2hexstr<uint64_t>(addr) + "," + std::to_string(size);
+                break;
+            case BreakpointType::Access:
+                packet = "z4," + MiscUtilsHex::n2hexstr<uint64_t>(addr) + "," + std::to_string(size);
                 break;
             }
 
@@ -427,7 +541,7 @@ namespace bwg
                     return false;
 
                 resp = decodeHex(resp.substr(index + 1));
-                auto symbol = parent_->findSymbol(mcutag(), resp);
+                auto symbol = backend().findSymbol(mcutag(), resp);
                 
                 std::string reply = "qSymbol:";
                 if (symbol == nullptr)
@@ -454,57 +568,21 @@ namespace bwg
 
             if (mcutag() == "cm0p")
             {
-                readRegisters();
-
+                //
+                // TODO - this needs to come from the JSON file
+                //
                 if (!sendRemoteCommand("psoc6 reset_halt sysresetreq", resp))
                     return false;
 
                 msg.clear();
                 msg << resp;
-                parent_->logger() << msg;
+                backend().logger() << msg;
 
-                if (!sendRemoteCommand("delay 200", resp))
-                    return false;
-
-                msg.clear();
-                msg << resp;
-                parent_->logger() << msg;
-
-                if (!setBreakpoint(BreakpointType::Hardware, 0x10000F20, 2))
-                    return false;
-
-                readRegisters();
-
-                if (!sendRemoteCommand("reset run", resp))
-                    return false;
 
                 if (!sendPacketGetResponse("?", resp))
                     return false;
 
                 readRegisters();
-            }
-            else
-            {
-                if (!sendRemoteCommand("reset run", resp))
-                    return false;
-
-                msg.clear();
-                msg << resp;
-                parent_->logger() << msg;
-
-                if (!sendRemoteCommand("sleep 200", resp))
-                    return false;
-
-                msg.clear();
-                msg << resp;
-                parent_->logger() << msg;
-
-                if (!sendRemoteCommand("psoc6 reset_halt sysresetreq", resp))
-                    return false;
-
-                msg.clear();
-                msg << resp;
-                parent_->logger() << msg;
             }
 
             return true;
@@ -521,6 +599,8 @@ namespace bwg
             if (!sendPacketGetResponse("?", resp))
                 return false;
 
+            setState(MCUState::Stopped);
+
             readRegisters();
 
             return true;
@@ -530,11 +610,21 @@ namespace bwg
         {
             std::string resp;
 
-            if (!sendPacketGetResponse("vCont?", resp))
-                return false;
+            if (state() == MCUState::Reset && mcutag() == "cm0p")
+            {
+                //
+                // TODO - this needs to come from the JSON file
+                //
+                if (!sendRemoteCommand("reset run", resp))
+                    return false;
+            }
+            else
+            {
+                if (!sendPacket("vCont;c"))
+                    return false;
+            }
 
-            if (!sendPacketGetResponse("vCont;c", resp))
-                return false;
+            setState(MCUState::Running);
 
             return true;
         }
@@ -550,7 +640,7 @@ namespace bwg
 
             Message msg(Message::Type::Debug, GDBServerBackend::ModuleName);
             msg << "connected to CPU '" << cpuTypeName() << "' with mcutag '" << mcutag() << "' on port '" << port_;
-            parent_->logger() << msg;
+            backend().logger() << msg;
 
             return true;
         }

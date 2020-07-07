@@ -1,7 +1,7 @@
 #include "GDBServerBackend.h"
 #include "GDBServerMCU.h"
 #include "PlatformLocations.h"
-#include "DebuggerRequest.h"
+#include "BreakpointRequest.h"
 #include "json.hpp"
 #include <thread>
 #include <fstream>
@@ -30,9 +30,9 @@ namespace bwg
         {
             bool ret = true;
 
-            for (auto pair : mcus())
+            for (auto mcu : mcus())
             {
-                if (pair.second->state() != BackendMCU::MCUState::Running)
+                if (mcu->state() == BackendMCU::MCUState::Initializing)
                     ret = false;
             }
 
@@ -172,13 +172,17 @@ namespace bwg
 
         bool GDBServerBackend::reset()
         {
-            for (auto pair : mcus())
+            for (auto mcu : mcus())
             {
-                if (pair.second->isMaster())
+                if (mcu->isMaster())
                 {
-                    auto req = pair.second->request(DebuggerRequest::BackendRequests::Reset);
+                    auto req = mcu->request(DebuggerRequest::BackendRequests::Reset);
                     req->waitFor();
-                    return true;
+                    if (req->status() == DebuggerRequest::RequestCompletionStatus::Success)
+                    {
+                        setAllReset();
+                        return true;
+                    }
                 }
             }
 
@@ -187,37 +191,113 @@ namespace bwg
 
         bool GDBServerBackend::stop(const std::string& mcutag)
         {
-            auto it = mcus().find(mcutag);
-            if (it == mcus().end())
+            auto mcu = getMCUByTag(mcutag);
+            if (mcu == nullptr)
                 return false;
 
-            auto req = it->second->request(DebuggerRequest::BackendRequests::Stop);
-            return req->waitFor();
+            auto req = mcu->request(DebuggerRequest::BackendRequests::Stop);
+            req->waitFor();
+
+            return req->status() == DebuggerRequest::RequestCompletionStatus::Success;
+        }
+
+        bool GDBServerBackend::run()
+        {
+            std::list<std::shared_ptr<DebuggerRequest>> requests;
+
+            for (auto mcu : mcus())
+            {
+                auto req = mcu->request(DebuggerRequest::BackendRequests::Run);
+                requests.push_back(req);
+            }
+
+            bool waiting = true;
+            while (waiting)
+            {
+                waiting = false;
+                for (auto req : requests)
+                {
+                    if (!req->isComplete())
+                        waiting = true;
+                }
+            }
+
+            for (auto req : requests)
+            {
+                if (req->status() == DebuggerRequest::RequestCompletionStatus::Error)
+                    return false;
+            }
+
+            return true;
         }
 
         bool GDBServerBackend::run(const std::string& mcutag)
         {
-            auto it = mcus().find(mcutag);
-            if (it == mcus().end())
+            auto mcu = getMCUByTag(mcutag);
+            if (mcu == nullptr)
                 return false;
 
-            auto req = it->second->request(DebuggerRequest::BackendRequests::Run);
-            return req->waitFor();
+            auto req = mcu->request(DebuggerRequest::BackendRequests::Run);
+            req->waitFor();
+
+            return req->status() == DebuggerRequest::RequestCompletionStatus::Success;
         }
 
-        bool GDBServerBackend::setBreakpoint(const std::string &mcutag, BreakpointType type, uint32_t addr, uint32_t size)
+        bool GDBServerBackend::stop()
         {
-            (void)type;
-            (void)addr;
-            (void)size;
+            std::list<std::shared_ptr<DebuggerRequest>> requests;
 
-            auto it = mcus().find(mcutag);
-            if (it == mcus().end())
+            for (auto mcu : mcus())
+            {
+                auto req = mcu->request(DebuggerRequest::BackendRequests::Stop);
+                requests.push_back(req);
+            }
+
+            bool waiting = true;
+            while (waiting)
+            {
+                waiting = false;
+                for (auto req : requests)
+                {
+                    if (!req->isComplete())
+                        waiting = true;
+                }
+            }
+
+            for (auto req : requests)
+            {
+                if (req->status() == DebuggerRequest::RequestCompletionStatus::Error)
+                    return false;
+            }
+
+            return true;
+        }
+
+
+        bool GDBServerBackend::setBreakpoint(const std::string &mcutag, BreakpointType type, uint64_t addr, uint64_t size)
+        {
+            auto mcu = getMCUByTag(mcutag);
+            if (mcu == nullptr)
                 return false;
 
-            // auto req = it->second->request(DebuggerRequest::BackendRequests::Breakpoint, type, addr, size);
-            auto req = it->second->request(DebuggerRequest::BackendRequests::Breakpoint);
-            return req->waitFor();
+            auto req = std::make_shared<BreakpointRequest>(true, type, addr, size);
+            mcu->request(req);
+            req->waitFor();
+
+            return req->status() == DebuggerRequest::RequestCompletionStatus::Success;
+        }        
+        
+        bool GDBServerBackend::removeBreakpoint(const std::string& mcutag, BreakpointType type, uint64_t addr, uint64_t size)
+        {
+            auto mcu = getMCUByTag(mcutag);
+            if (mcu == nullptr)
+                return false;
+
+            auto req = std::make_shared<BreakpointRequest>(false, type, addr, size);
+            mcu->request(req);
+            req->waitFor();
+
+            return req->status() == DebuggerRequest::RequestCompletionStatus::Success;
         }
 
         bool GDBServerBackend::connect()

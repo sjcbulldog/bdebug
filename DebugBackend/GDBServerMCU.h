@@ -30,12 +30,6 @@ namespace bwg
             bool readMemory(uint32_t addr, uint32_t length, std::vector<uint32_t>& data);
             bool readRegisters();
             
-            bool provideSymbols() override;
-            bool run() override;
-            bool reset() override;
-            bool stop() override;
-            bool setBreakpoint(BreakpointType type, uint32_t addr, uint32_t size) override;
-
         private:
             void mcuThread(const std::string &hostaddr, uint16_t port);
             bool validPacket(const std::string& str, std::string& payload);
@@ -47,15 +41,22 @@ namespace bwg
             std::string encodeHex(const std::string& text);
             std::string decodeHex(const std::string& hex);
 
+            bool setBreakpoint(BreakpointType type, uint64_t addr, uint64_t size);
+            bool removeBreakpoint(BreakpointType type, uint64_t addr, uint64_t size);
+            bool provideSymbols();
+            bool reset();
+            bool stop();
+            bool run();
+
+            void doRequest(std::shared_ptr<DebuggerRequest> req);
+
         private:
             std::thread* thread_;
-            GDBServerBackend* parent_;
             bwg::platform::NetworkTCPSocket* socket_;
             uint16_t port_;
             bool ack_mode_;
             std::string supported_;
 
-            uint8_t state_;
             uint16_t cputype_;
 
             std::map<std::string, uint32_t> registers_;
@@ -67,7 +68,6 @@ namespace bwg
             std::map<std::string, std::list<std::string>> cmds_;
 
             static std::list<std::string> register_names_;
-
         };
     }
 }
